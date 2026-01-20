@@ -74,8 +74,8 @@ export interface Config {
     categories: Category;
     jobs: Job;
     orders: Order;
-    'contact-requests': ContactRequest;
     projects: Project;
+    'contact-requests': ContactRequest;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,8 +90,8 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
-    'contact-requests': ContactRequestsSelect<false> | ContactRequestsSelect<true>;
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
+    'contact-requests': ContactRequestsSelect<false> | ContactRequestsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -499,23 +499,6 @@ export interface Order {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "contact-requests".
- */
-export interface ContactRequest {
-  id: string;
-  fullName: string;
-  email: string;
-  subject?: string | null;
-  phone?: string | null;
-  details: string;
-  image?: (string | null) | Media;
-  status?: ('pending' | 'call_back' | 'resolved') | null;
-  remarks?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects".
  */
 export interface Project {
@@ -543,6 +526,23 @@ export interface Project {
   liveUrl?: string | null;
   status?: ('draft' | 'published') | null;
   publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-requests".
+ */
+export interface ContactRequest {
+  id: string;
+  fullName: string;
+  email: string;
+  subject?: string | null;
+  phone?: string | null;
+  details: string;
+  image?: (string | null) | Media;
+  status?: ('pending' | 'call_back' | 'resolved') | null;
+  remarks?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -599,12 +599,12 @@ export interface PayloadLockedDocument {
         value: string | Order;
       } | null)
     | ({
-        relationTo: 'contact-requests';
-        value: string | ContactRequest;
-      } | null)
-    | ({
         relationTo: 'projects';
         value: string | Project;
+      } | null)
+    | ({
+        relationTo: 'contact-requests';
+        value: string | ContactRequest;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -946,22 +946,6 @@ export interface OrdersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "contact-requests_select".
- */
-export interface ContactRequestsSelect<T extends boolean = true> {
-  fullName?: T;
-  email?: T;
-  subject?: T;
-  phone?: T;
-  details?: T;
-  image?: T;
-  status?: T;
-  remarks?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects_select".
  */
 export interface ProjectsSelect<T extends boolean = true> {
@@ -974,6 +958,22 @@ export interface ProjectsSelect<T extends boolean = true> {
   liveUrl?: T;
   status?: T;
   publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-requests_select".
+ */
+export interface ContactRequestsSelect<T extends boolean = true> {
+  fullName?: T;
+  email?: T;
+  subject?: T;
+  phone?: T;
+  details?: T;
+  image?: T;
+  status?: T;
+  remarks?: T;
   updatedAt?: T;
   createdAt?: T;
 }
