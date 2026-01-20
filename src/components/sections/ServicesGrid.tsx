@@ -1,3 +1,4 @@
+'use client'
 import { Card, Button, Icon, type IconName } from '@/components/ui'
 import { cn } from '@/utils/cn'
 
@@ -116,13 +117,33 @@ export function ServicesGrid({
                 )}
 
                 {/* CTA Button */}
-                <Button
-                  variant="primary"
-                  href={`/services/${service.slug}`}
-                  className="mt-auto w-full"
-                >
-                  Learn More
-                </Button>
+                <div className="mt-auto flex gap-4">
+                  <Button variant="primary" href={`/services/${service.slug}`} className="w-full">
+                    Learn More
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/checkout', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ serviceId: service.id }),
+                        })
+                        const { url } = await res.json()
+                        if (url) window.location.href = url
+                      } catch (err) {
+                        console.error('Checkout failed:', err)
+                        alert('Something went wrong initiating checkout.')
+                      }
+                    }}
+                  >
+                    Buy Now
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
