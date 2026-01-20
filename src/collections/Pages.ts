@@ -4,6 +4,7 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 import type { CollectionConfig } from 'payload'
+import { revalidate } from '@/hooks/revalidate'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -13,6 +14,9 @@ export const Pages: CollectionConfig = {
   },
   access: {
     read: () => true,
+  },
+  hooks: {
+    afterChange: [revalidate],
   },
   fields: [
     {
