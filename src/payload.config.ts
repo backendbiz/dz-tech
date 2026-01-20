@@ -42,7 +42,7 @@ export default buildConfig({
       // beforeDashboard: [SeedButton as any],
     },
   },
-  collections: [Users, Media, Pages, Services, Categories, Jobs, Orders, ContactRequests, Projects],
+  collections: [Users, Media, Pages, Services, Categories, Jobs, Orders, Projects, ContactRequests],
 
   globals: [SiteSettings, Navigation, Footer],
   editor: lexicalEditor(),
