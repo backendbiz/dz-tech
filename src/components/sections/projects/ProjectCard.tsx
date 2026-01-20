@@ -27,7 +27,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, className }) 
 
   return (
     <Link
-      href={`/projects/${slug}`}
+      href={`/portfolio/${slug}`}
       className={cn(
         'group relative block overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
         className,

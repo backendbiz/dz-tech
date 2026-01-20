@@ -55,7 +55,7 @@ export function Header({
     { label: 'Home', link: '/' },
     { label: 'About', link: '/about' },
     { label: 'Services', link: '/services' },
-    { label: 'Projects', link: '/projects' },
+    { label: 'Projects', link: '/portfolio' },
     { label: 'Contact', link: '/contact' },
   ]
 

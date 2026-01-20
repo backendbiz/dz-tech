@@ -171,9 +171,9 @@ export default async function ProjectPage({ params }: Props) {
       {/* Navigation Footer */}
       <section className="bg-gray-50 py-12 border-t border-gray-200">
         <div className="container text-center">
-          <Link href="/projects">
+          <Link href="/portfolio">
             <Button variant="outline" className="gap-2">
-              ← Back to Projects
+              ← Back to Portfolio
             </Button>
           </Link>
         </div>

@@ -44,7 +44,7 @@ async function seed() {
           },
           {
             label: 'Projects',
-            link: '/projects',
+            link: '/portfolio',
             type: 'internal',
           },
           {
