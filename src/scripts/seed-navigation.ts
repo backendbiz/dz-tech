@@ -43,6 +43,11 @@ async function seed() {
             ],
           },
           {
+            label: 'Projects',
+            link: '/projects',
+            type: 'internal',
+          },
+          {
             label: 'Contact',
             link: '/contact',
             type: 'internal',
