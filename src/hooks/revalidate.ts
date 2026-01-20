@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache'
 export const revalidate: CollectionAfterChangeHook = ({ doc, req, operation }) => {
   req.payload.logger.info(`Revalidating path...`)
 
-  revalidatePath('/', 'layout')
+  try {
+    revalidatePath('/', 'layout')
+  } catch (error) {
+    req.payload.logger.warn(`Revalidate failed (likely running in script): ${error}`)
+  }
 
   return doc
 }
@@ -12,7 +16,11 @@ export const revalidate: CollectionAfterChangeHook = ({ doc, req, operation }) =
 export const revalidateGlobal: GlobalAfterChangeHook = ({ doc, req }) => {
   req.payload.logger.info(`Revalidating global...`)
 
-  revalidatePath('/', 'layout')
+  try {
+    revalidatePath('/', 'layout')
+  } catch (error) {
+    req.payload.logger.warn(`Revalidate failed (likely running in script): ${error}`)
+  }
 
   return doc
 }

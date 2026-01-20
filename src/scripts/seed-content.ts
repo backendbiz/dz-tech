@@ -349,6 +349,151 @@ export const seed = async (payload: Payload) => {
       }
     }
 
+    // 5. Seed Projects
+    console.log('Seeding Projects...')
+    const projects = [
+      {
+        title: 'Global Financial Transformation',
+        client: 'FinTech Corp',
+        slug: 'global-financial-transformation',
+        description: {
+          root: {
+            type: 'root',
+            children: [
+              {
+                type: 'paragraph',
+                children: [
+                  {
+                    type: 'text',
+                    text: 'We helped FinTech Corp overhaul their entire digital infrastructure, resulting in a 300% increase in transaction processing speed.',
+                    version: 1,
+                  },
+                ],
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            version: 1,
+          },
+        },
+        categorySlugs: ['strategy', 'technology'],
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        liveUrl: 'https://example.com/fintech',
+      },
+      {
+        title: 'Supply Chain Optimization',
+        client: 'Logistics Pro',
+        slug: 'supply-chain-optimization',
+        description: {
+          root: {
+            type: 'root',
+            children: [
+              {
+                type: 'paragraph',
+                children: [
+                  {
+                    type: 'text',
+                    text: 'By implementing IoT sensors and AI-driven analytics, we reduced supply chain waste by 25% for Logistics Pro.',
+                    version: 1,
+                  },
+                ],
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            version: 1,
+          },
+        },
+        categorySlugs: ['operations'],
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        liveUrl: 'https://example.com/logistics',
+      },
+      {
+        title: 'Healthcare App Development',
+        client: 'MediCare Plus',
+        slug: 'healthcare-app-development',
+        description: {
+          root: {
+            type: 'root',
+            children: [
+              {
+                type: 'paragraph',
+                children: [
+                  {
+                    type: 'text',
+                    text: 'Developed a patient-centric mobile application that improved medication adherence by 40%.',
+                    version: 1,
+                  },
+                ],
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            version: 1,
+          },
+        },
+        categorySlugs: ['technology'],
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        liveUrl: 'https://example.com/healthcare',
+      },
+    ]
+
+    // Fetch a random media item to use for projects
+    const mediaDocs = await payload.find({
+      collection: 'media',
+      limit: 1,
+    })
+    const defaultMediaId = mediaDocs.docs[0]?.id
+
+    if (!defaultMediaId) {
+      console.warn(
+        'Warning: No media found. Projects will be created without a specific featured image if validation allows, or might fail if required.',
+      )
+    }
+
+    for (const project of projects) {
+      const existing = await payload.find({
+        collection: 'projects',
+        where: { slug: { equals: project.slug } },
+      })
+
+      if (existing.totalDocs === 0) {
+        // Map category slugs to IDs
+        const relatedCategories = project.categorySlugs
+          .map((slug) => categoryDocs[slug])
+          .filter(Boolean)
+
+        const projectData = {
+          ...project,
+          categories: relatedCategories,
+          featuredImage: defaultMediaId, // Use the found media ID
+        }
+
+        // Remove helper prop
+        delete (projectData as any).categorySlugs
+
+        if (defaultMediaId) {
+          await payload.create({
+            collection: 'projects',
+            data: projectData as any,
+          })
+        } else {
+          console.error(
+            `Skipping project ${project.title} because no media was found and featuredImage is required.`,
+          )
+        }
+      }
+    }
+
     console.log('Seed content completed successfully!')
   } catch (error) {
     console.error('Error seeding content:', error)
