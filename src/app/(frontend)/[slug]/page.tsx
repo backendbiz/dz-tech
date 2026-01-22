@@ -50,25 +50,35 @@ export default async function GenericPage({ params }: Props) {
     return notFound()
   }
 
-  const { heroSubtitle, ctaText, ctaLink, secondaryCtaText, secondaryCtaLink, heroVariant } = page
+  const {
+    heroTitle,
+    heroSubtitle,
+    ctaText,
+    ctaLink,
+    secondaryCtaText,
+    secondaryCtaLink,
+    heroVariant,
+  } = page
 
   return (
     <>
-      <Hero
-        title={page.title}
-        subtitle={heroSubtitle || ''}
-        ctaText={ctaText || undefined}
-        ctaLink={ctaLink || undefined}
-        secondaryCta={
-          secondaryCtaText && secondaryCtaLink
-            ? {
-                text: secondaryCtaText,
-                link: secondaryCtaLink,
-              }
-            : undefined
-        }
-        variant={heroVariant || 'simple'}
-      />
+      {page.enableHero && (
+        <Hero
+          title={heroTitle || page.title}
+          subtitle={heroSubtitle || ''}
+          ctaText={ctaText || undefined}
+          ctaLink={ctaLink || undefined}
+          secondaryCta={
+            secondaryCtaText && secondaryCtaLink
+              ? {
+                  text: secondaryCtaText,
+                  link: secondaryCtaLink,
+                }
+              : undefined
+          }
+          variant={heroVariant || 'simple'}
+        />
+      )}
 
       <section className="section bg-white py-20">
         <div className="container max-w-4xl">
@@ -77,6 +87,21 @@ export default async function GenericPage({ params }: Props) {
               return (
                 <div key={block.id || index} className="mb-12 last:mb-0">
                   <RichText content={block.content} />
+                </div>
+              )
+            }
+
+            if (block.blockType === 'legal-block') {
+              return (
+                <div key={block.id || index} className="mb-12 last:mb-0 max-w-3xl mx-auto">
+                  {block.lastUpdated && (
+                    <p className="text-sm text-gray-500 mb-8 font-medium">
+                      Last Updated: {new Date(block.lastUpdated).toLocaleDateString()}
+                    </p>
+                  )}
+                  <div className="prose prose-slate max-w-none">
+                    <RichText content={block.content} />
+                  </div>
                 </div>
               )
             }

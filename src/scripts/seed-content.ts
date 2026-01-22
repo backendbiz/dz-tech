@@ -323,6 +323,191 @@ export const seed = async (payload: Payload) => {
           },
         ],
       },
+      {
+        title: 'Terms and Conditions',
+        slug: 'terms-and-conditions',
+        status: 'published',
+        heroType: 'simple',
+        heroSubtitle: 'Please read these terms and conditions carefully before using our service.',
+        layout: [
+          {
+            blockType: 'legal-block',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            lastUpdated: new Date().toISOString() as any,
+            content: {
+              root: {
+                type: 'root',
+                children: [
+                  {
+                    type: 'heading',
+                    tag: 'h2',
+                    children: [{ type: 'text', text: '1. Introduction', version: 1 }],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Welcome to Apex Consulting. These terms and conditions outline the rules and regulations for the use of our Website.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'By accessing this website we assume you accept these terms and conditions. Do not continue to use Apex Consulting if you do not agree to take all of the terms and conditions stated on this page.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                ],
+                direction: null,
+                format: '',
+                indent: 0,
+                version: 1,
+              },
+            },
+          },
+        ],
+      },
+      {
+        title: 'Privacy Policy',
+        slug: 'privacy-policy',
+        status: 'published',
+        heroType: 'simple',
+        heroSubtitle:
+          'We are committed to protecting your personal information and your right to privacy.',
+        layout: [
+          {
+            blockType: 'legal-block',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            lastUpdated: new Date().toISOString() as any,
+            content: {
+              root: {
+                type: 'root',
+                children: [
+                  {
+                    type: 'heading',
+                    tag: 'h2',
+                    children: [{ type: 'text', text: '1. Information We Collect', version: 1 }],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'We collect personal information that you provide to us such as name, address, contact information, passwords and security data, and payment information.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                  {
+                    type: 'heading',
+                    tag: 'h2',
+                    children: [
+                      { type: 'text', text: '2. How We Use Your Information', version: 1 },
+                    ],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'We use the information we collect or receive to communicate with you, to facilitate account creation and logon process, and to protect our Services.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                ],
+                direction: null,
+                format: '',
+                indent: 0,
+                version: 1,
+              },
+            },
+          },
+        ],
+      },
+      {
+        title: 'Refund Policy',
+        slug: 'refund-policy',
+        status: 'published',
+        heroType: 'simple',
+        heroSubtitle: 'Our policy on refunds and cancellations.',
+        layout: [
+          {
+            blockType: 'legal-block',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            lastUpdated: new Date().toISOString() as any,
+            content: {
+              root: {
+                type: 'root',
+                children: [
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'Thank you for your business. We want you to be satisfied with our consulting services.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                  {
+                    type: 'heading',
+                    tag: 'h2',
+                    children: [{ type: 'text', text: 'Consulting Services', version: 1 }],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'We issue refunds for contracts within 7 days of the original purchase of the contract.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                  {
+                    type: 'heading',
+                    tag: 'h2',
+                    children: [{ type: 'text', text: 'Contact Us', version: 1 }],
+                    version: 1,
+                  },
+                  {
+                    type: 'paragraph',
+                    children: [
+                      {
+                        type: 'text',
+                        text: 'If you have any questions about our Returns and Refunds Policy, please contact us.',
+                        version: 1,
+                      },
+                    ],
+                    version: 1,
+                  },
+                ],
+                direction: null,
+                format: '',
+                indent: 0,
+                version: 1,
+              },
+            },
+          },
+        ],
+      },
     ]
 
     for (const page of pages) {

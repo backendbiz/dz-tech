@@ -5,6 +5,7 @@ import {
 } from '@payloadcms/richtext-lexical'
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
+import { formatSlug } from '@/utils/slug'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -24,6 +25,7 @@ export const Pages: CollectionConfig = {
       type: 'text',
       required: true,
     },
+
     {
       name: 'slug',
       type: 'text',
@@ -31,6 +33,9 @@ export const Pages: CollectionConfig = {
       unique: true,
       admin: {
         position: 'sidebar',
+      },
+      hooks: {
+        beforeValidate: [formatSlug('title')],
       },
     },
     {
@@ -40,6 +45,21 @@ export const Pages: CollectionConfig = {
           label: 'Hero',
           fields: [
             {
+              name: 'enableHero',
+              type: 'checkbox',
+              label: 'Enable Hero Section',
+              defaultValue: true,
+            },
+            {
+              name: 'heroTitle',
+              type: 'text',
+              label: 'Hero Title',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+                description: 'Overrides the default page title in the hero section',
+              },
+            },
+            {
               name: 'heroType',
               type: 'select',
               options: [
@@ -48,21 +68,30 @@ export const Pages: CollectionConfig = {
                 { label: 'With Pattern', value: 'pattern' },
               ],
               defaultValue: 'simple',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+              },
             },
             {
               name: 'heroImage',
               type: 'upload',
               relationTo: 'media',
               admin: {
-                condition: (data) => data?.heroType === 'image',
+                condition: (data) => Boolean(data?.enableHero) && data?.heroType === 'image',
               },
             },
             {
               name: 'heroSubtitle',
               type: 'textarea',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+              },
             },
             {
               type: 'row',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+              },
               fields: [
                 {
                   name: 'ctaText',
@@ -80,6 +109,9 @@ export const Pages: CollectionConfig = {
             },
             {
               type: 'row',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+              },
               fields: [
                 {
                   name: 'secondaryCtaText',
@@ -104,6 +136,9 @@ export const Pages: CollectionConfig = {
                 { label: 'Minimal', value: 'minimal' },
               ],
               defaultValue: 'simple',
+              admin: {
+                condition: (data) => Boolean(data?.enableHero),
+              },
             },
           ],
         },
@@ -142,6 +177,31 @@ export const Pages: CollectionConfig = {
                           EXPERIMENTAL_TableFeature(),
                         ],
                       }),
+                    },
+                  ],
+                },
+                {
+                  slug: 'legal-block',
+                  labels: {
+                    singular: 'Legal Content',
+                    plural: 'Legal Content Blocks',
+                  },
+                  fields: [
+                    {
+                      name: 'content',
+                      type: 'richText',
+                      editor: lexicalEditor({
+                        features: ({ defaultFeatures }) => [
+                          ...defaultFeatures,
+                          FixedToolbarFeature(),
+                          EXPERIMENTAL_TableFeature(),
+                        ],
+                      }),
+                    },
+                    {
+                      name: 'lastUpdated',
+                      type: 'date',
+                      label: 'Effective Date',
                     },
                   ],
                 },
@@ -381,6 +441,282 @@ export const Pages: CollectionConfig = {
                     {
                       name: 'subtitle',
                       type: 'textarea',
+                    },
+                  ],
+                },
+                {
+                  slug: 'clients-block',
+                  labels: {
+                    singular: 'Clients Section',
+                    plural: 'Clients Sections',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                      defaultValue: 'Trusted By Industry Leaders',
+                    },
+                    {
+                      name: 'clients',
+                      type: 'array',
+                      fields: [
+                        {
+                          name: 'name',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'logo',
+                          type: 'upload',
+                          relationTo: 'media',
+                          required: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  slug: 'testimonials-block',
+                  labels: {
+                    singular: 'Testimonials',
+                    plural: 'Testimonials',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'subtitle',
+                      type: 'text',
+                    },
+                    {
+                      name: 'testimonials',
+                      type: 'array',
+                      fields: [
+                        {
+                          name: 'name',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'role',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'company',
+                          type: 'text',
+                        },
+                        {
+                          name: 'quote',
+                          type: 'textarea',
+                          required: true,
+                        },
+                        {
+                          name: 'image',
+                          type: 'upload',
+                          relationTo: 'media',
+                        },
+                        {
+                          name: 'rating',
+                          type: 'number',
+                          min: 1,
+                          max: 5,
+                          defaultValue: 5,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  slug: 'process-block',
+                  labels: {
+                    singular: 'Process Steps',
+                    plural: 'Process Steps',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'steps',
+                      type: 'array',
+                      fields: [
+                        {
+                          name: 'title',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'description',
+                          type: 'textarea',
+                          required: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  slug: 'faq-block',
+                  labels: {
+                    singular: 'FAQ',
+                    plural: 'FAQs',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'subtitle',
+                      type: 'text',
+                    },
+                    {
+                      name: 'faqs',
+                      type: 'array',
+                      fields: [
+                        {
+                          name: 'question',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'answer',
+                          type: 'textarea',
+                          required: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  slug: 'pricing-block',
+                  labels: {
+                    singular: 'Pricing Plans',
+                    plural: 'Pricing Plans',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'subtitle',
+                      type: 'text',
+                    },
+                    {
+                      name: 'plans',
+                      type: 'array',
+                      fields: [
+                        {
+                          name: 'name',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'price',
+                          type: 'text',
+                          required: true,
+                        },
+                        {
+                          name: 'period',
+                          type: 'text',
+                          admin: {
+                            placeholder: 'mo, yr, etc',
+                          },
+                        },
+                        {
+                          name: 'description',
+                          type: 'text',
+                        },
+                        {
+                          name: 'features',
+                          type: 'array',
+                          fields: [
+                            {
+                              name: 'feature',
+                              type: 'text',
+                            },
+                          ],
+                        },
+                        {
+                          name: 'isPopular',
+                          type: 'checkbox',
+                          label: 'Mark as Popular',
+                        },
+                        {
+                          name: 'ctaText',
+                          type: 'text',
+                        },
+                        {
+                          name: 'ctaLink',
+                          type: 'text',
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  slug: 'video-block',
+                  labels: {
+                    singular: 'Video Section',
+                    plural: 'Video Sections',
+                  },
+                  fields: [
+                    {
+                      name: 'heading',
+                      type: 'text',
+                    },
+                    {
+                      name: 'description',
+                      type: 'textarea',
+                    },
+                    {
+                      name: 'videoUrl',
+                      type: 'text',
+                      label: 'Video Embed URL',
+                      required: true,
+                    },
+                  ],
+                },
+                {
+                  slug: 'projects-block',
+                  labels: {
+                    singular: 'Project Grid',
+                    plural: 'Project Grids',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'subtitle',
+                      type: 'text',
+                    },
+                    {
+                      name: 'limit',
+                      type: 'number',
+                      defaultValue: 6,
+                    },
+                  ],
+                },
+                {
+                  slug: 'careers-block',
+                  labels: {
+                    singular: 'Careers List',
+                    plural: 'Careers Lists',
+                  },
+                  fields: [
+                    {
+                      name: 'title',
+                      type: 'text',
+                    },
+                    {
+                      name: 'subtitle',
+                      type: 'text',
                     },
                   ],
                 },

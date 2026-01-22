@@ -1,15 +1,8 @@
-import {
-  Hero,
-  Features,
-  About,
-  Stats,
-  CTABanner,
-  ServicesGrid,
-  ContactForm,
-} from '@/components/sections'
+import { Hero } from '@/components/sections'
 import type { IconName } from '@/components/ui'
 import { getPayloadClient } from '@/lib/payload'
 import { notFound } from 'next/navigation'
+import { RenderBlocks } from '@/components/RenderBlocks'
 
 import type { Page } from '@/payload-types'
 
@@ -40,7 +33,20 @@ export default async function HomePage() {
     limit: 6,
   })
 
+  // Fetch projects and jobs for blocks that might use them
+  // (Optimization: we could check if blocks exist first, but this is fine for now)
+  const { docs: projectDocs } = await payload.find({
+    collection: 'projects',
+    limit: 6,
+  })
+
+  const { docs: jobDocs } = await payload.find({
+    collection: 'jobs',
+    limit: 6,
+  })
+
   const {
+    heroTitle,
     heroType,
     heroImage,
     heroSubtitle,
@@ -74,10 +80,36 @@ export default async function HomePage() {
     priceUnit: service.priceUnit || undefined,
   }))
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projects = projectDocs.map((project: any) => ({
+    id: project.id,
+    title: project.title,
+    slug: project.slug || '',
+    category:
+      typeof project.category === 'object' && project.category ? project.category.title : undefined,
+    image:
+      typeof project.featuredImage === 'object' &&
+      project.featuredImage &&
+      'url' in project.featuredImage
+        ? project.featuredImage.url
+        : undefined,
+    summary: project.meta?.description || undefined,
+  }))
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jobs = jobDocs.map((job: any) => ({
+    id: job.id,
+    title: job.title,
+    slug: job.slug || '',
+    type: job.type,
+    location: job.location,
+    salary: job.salary || undefined,
+  }))
+
   return (
     <>
       <Hero
-        title={page.title}
+        title={heroTitle || page.title}
         subtitle={heroSubtitle || ''}
         ctaText={ctaText || 'Get Started'}
         ctaLink={ctaLink || '/contact'}
@@ -93,87 +125,7 @@ export default async function HomePage() {
         backgroundImage={heroImageUrl || undefined}
       />
 
-      {page.layout?.map((block, index) => {
-        switch (block.blockType) {
-          case 'features-block':
-            return (
-              <Features
-                key={block.id || index}
-                title={block.heading || ''}
-                subtitle={block.subtitle || ''}
-                features={
-                  block.features?.map((f) => ({
-                    icon: (f.icon as IconName) || 'briefcase',
-                    title: f.title,
-                    description: f.description || '',
-                  })) || []
-                }
-                columns={4}
-                background={block.background || 'white'}
-              />
-            )
-          case 'stats-block':
-            return (
-              <Stats
-                key={block.id || index}
-                stats={
-                  block.stats?.map((s) => ({
-                    value: s.value,
-                    label: s.label,
-                  })) || []
-                }
-              />
-            )
-          case 'about-block':
-            // Handle features string array from object array
-            const aboutFeatures = block.features?.map((f) => f.text || '').filter(Boolean) || []
-            return (
-              <About
-                key={block.id || index}
-                sectionLabel={block.sectionLabel || ''}
-                heading={block.heading}
-                description={block.description}
-                features={aboutFeatures}
-                ctaText={block.ctaText || ''}
-                ctaLink={block.ctaLink || ''}
-              />
-            )
-          case 'cta-block':
-            return (
-              <CTABanner
-                key={block.id || index}
-                heading={block.heading}
-                description={block.description || ''}
-                ctaText={block.buttonText}
-                ctaLink={block.buttonLink}
-                variant={block.style || 'navy'}
-              />
-            )
-          case 'services-block':
-            return (
-              <ServicesGrid
-                key={block.id || index}
-                title={block.title || ''}
-                subtitle={block.subtitle || ''}
-                services={services.slice(0, block.limit || 6)}
-                columns={3}
-              />
-            )
-          case 'contact-block':
-            return (
-              <ContactForm
-                key={block.id || index}
-                title={block.title || 'FREE CONSULTATION'}
-                subtitle={
-                  block.subtitle ||
-                  "Let's discuss how we can help your business grow. Fill out the form and we'll get back to you within 24 hours."
-                }
-              />
-            )
-          default:
-            return null
-        }
-      })}
+      <RenderBlocks blocks={page.layout} data={{ services, projects, jobs }} />
     </>
   )
 }

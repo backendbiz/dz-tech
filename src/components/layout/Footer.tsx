@@ -43,8 +43,9 @@ export function Footer({
   socialLinks = [],
   copyrightText = `© ${new Date().getFullYear()} Consulting. All rights reserved.`,
   bottomLinks = [
-    { label: 'Privacy Policy', link: '/privacy' },
-    { label: 'Terms of Service', link: '/terms' },
+    { label: 'Privacy Policy', link: '/privacy-policy' },
+    { label: 'Terms and Conditions', link: '/terms-and-conditions' },
+    { label: 'Refund Policy', link: '/refund-policy' },
   ],
 }: FooterProps) {
   const socialIcons: Record<string, IconName> = {

@@ -226,6 +226,11 @@ export interface Page {
   id: string;
   title: string;
   slug: string;
+  enableHero?: boolean | null;
+  /**
+   * Overrides the default page title in the hero section
+   */
+  heroTitle?: string | null;
   heroType?: ('simple' | 'image' | 'pattern') | null;
   heroImage?: (string | null) | Media;
   heroSubtitle?: string | null;
@@ -270,6 +275,27 @@ export interface Page {
             id?: string | null;
             blockName?: string | null;
             blockType: 'content-block';
+          }
+        | {
+            content?: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            } | null;
+            lastUpdated?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'legal-block';
           }
         | {
             heading: string;
@@ -369,6 +395,112 @@ export interface Page {
             id?: string | null;
             blockName?: string | null;
             blockType: 'contact-block';
+          }
+        | {
+            title?: string | null;
+            clients?:
+              | {
+                  name: string;
+                  logo: string | Media;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'clients-block';
+          }
+        | {
+            title?: string | null;
+            subtitle?: string | null;
+            testimonials?:
+              | {
+                  name: string;
+                  role: string;
+                  company?: string | null;
+                  quote: string;
+                  image?: (string | null) | Media;
+                  rating?: number | null;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'testimonials-block';
+          }
+        | {
+            title?: string | null;
+            steps?:
+              | {
+                  title: string;
+                  description: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'process-block';
+          }
+        | {
+            title?: string | null;
+            subtitle?: string | null;
+            faqs?:
+              | {
+                  question: string;
+                  answer: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'faq-block';
+          }
+        | {
+            title?: string | null;
+            subtitle?: string | null;
+            plans?:
+              | {
+                  name: string;
+                  price: string;
+                  period?: string | null;
+                  description?: string | null;
+                  features?:
+                    | {
+                        feature?: string | null;
+                        id?: string | null;
+                      }[]
+                    | null;
+                  isPopular?: boolean | null;
+                  ctaText?: string | null;
+                  ctaLink?: string | null;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'pricing-block';
+          }
+        | {
+            heading?: string | null;
+            description?: string | null;
+            videoUrl: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'video-block';
+          }
+        | {
+            title?: string | null;
+            subtitle?: string | null;
+            limit?: number | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'projects-block';
+          }
+        | {
+            title?: string | null;
+            subtitle?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'careers-block';
           }
       )[]
     | null;
@@ -742,6 +874,8 @@ export interface MediaSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  enableHero?: T;
+  heroTitle?: T;
   heroType?: T;
   heroImage?: T;
   heroSubtitle?: T;
@@ -758,6 +892,14 @@ export interface PagesSelect<T extends boolean = true> {
           | T
           | {
               content?: T;
+              id?: T;
+              blockName?: T;
+            };
+        'legal-block'?:
+          | T
+          | {
+              content?: T;
+              lastUpdated?: T;
               id?: T;
               blockName?: T;
             };
@@ -845,6 +987,120 @@ export interface PagesSelect<T extends boolean = true> {
               blockName?: T;
             };
         'contact-block'?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              id?: T;
+              blockName?: T;
+            };
+        'clients-block'?:
+          | T
+          | {
+              title?: T;
+              clients?:
+                | T
+                | {
+                    name?: T;
+                    logo?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        'testimonials-block'?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              testimonials?:
+                | T
+                | {
+                    name?: T;
+                    role?: T;
+                    company?: T;
+                    quote?: T;
+                    image?: T;
+                    rating?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        'process-block'?:
+          | T
+          | {
+              title?: T;
+              steps?:
+                | T
+                | {
+                    title?: T;
+                    description?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        'faq-block'?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              faqs?:
+                | T
+                | {
+                    question?: T;
+                    answer?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        'pricing-block'?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              plans?:
+                | T
+                | {
+                    name?: T;
+                    price?: T;
+                    period?: T;
+                    description?: T;
+                    features?:
+                      | T
+                      | {
+                          feature?: T;
+                          id?: T;
+                        };
+                    isPopular?: T;
+                    ctaText?: T;
+                    ctaLink?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        'video-block'?:
+          | T
+          | {
+              heading?: T;
+              description?: T;
+              videoUrl?: T;
+              id?: T;
+              blockName?: T;
+            };
+        'projects-block'?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              limit?: T;
+              id?: T;
+              blockName?: T;
+            };
+        'careers-block'?:
           | T
           | {
               title?: T;
