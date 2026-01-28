@@ -621,12 +621,43 @@ export interface Job {
  */
 export interface Order {
   id: string;
+  /**
+   * Auto-generated unique order ID
+   */
+  orderId: string;
   service: string | Service;
-  status: 'pending' | 'paid' | 'failed' | 'refunded';
-  total: number;
-  stripeSessionId?: string | null;
-  stripePaymentIntentId?: string | null;
-  customerEmail?: string | null;
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  /**
+   * Order total amount
+   */
+  amount: number;
+  currency?: string | null;
+  /**
+   * Current order status
+   */
+  status: 'pending' | 'processing' | 'paid' | 'failed' | 'expired';
+  /**
+   * GBPay payment information
+   */
+  paymentDetails?: {
+    /**
+     * GBPay payment session ID
+     */
+    sessionId?: string | null;
+    /**
+     * GBPay checkout URL
+     */
+    paymentLink?: string | null;
+    /**
+     * Transaction ID after successful payment
+     */
+    transactionId?: string | null;
+    paidAt?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1193,12 +1224,26 @@ export interface JobsSelect<T extends boolean = true> {
  * via the `definition` "orders_select".
  */
 export interface OrdersSelect<T extends boolean = true> {
+  orderId?: T;
   service?: T;
+  customer?:
+    | T
+    | {
+        id?: T;
+        name?: T;
+        email?: T;
+      };
+  amount?: T;
+  currency?: T;
   status?: T;
-  total?: T;
-  stripeSessionId?: T;
-  stripePaymentIntentId?: T;
-  customerEmail?: T;
+  paymentDetails?:
+    | T
+    | {
+        sessionId?: T;
+        paymentLink?: T;
+        transactionId?: T;
+        paidAt?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
