@@ -571,6 +571,31 @@ export interface Service {
   order?: number | null;
   status: 'draft' | 'published';
   featured?: boolean | null;
+  /**
+   * Configure Stripe payment processing for this service. Leave empty to use the default Stripe account.
+   */
+  stripeConfig?: {
+    /**
+     * Enable to use a different Stripe account for this service
+     */
+    useCustomStripeAccount?: boolean | null;
+    /**
+     * Automatically set based on your Stripe keys
+     */
+    stripeKeyMode?: ('live' | 'test' | 'unknown') | null;
+    /**
+     * The secret key starting with sk_live_ or sk_test_ (will be encrypted)
+     */
+    stripeSecretKey?: string | null;
+    /**
+     * The publishable key starting with pk_live_ or pk_test_
+     */
+    stripePublishableKey?: string | null;
+    /**
+     * The webhook endpoint secret starting with whsec_ (will be encrypted)
+     */
+    stripeWebhookSecret?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -621,6 +646,10 @@ export interface Job {
  */
 export interface Order {
   id: string;
+  /**
+   * Custom order ID (ORD-YYYYMMDD-HHMMSS-XXXXX)
+   */
+  orderId: string;
   service: string | Service;
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   total: number;
@@ -1146,6 +1175,15 @@ export interface ServicesSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   featured?: T;
+  stripeConfig?:
+    | T
+    | {
+        useCustomStripeAccount?: T;
+        stripeKeyMode?: T;
+        stripeSecretKey?: T;
+        stripePublishableKey?: T;
+        stripeWebhookSecret?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1193,6 +1231,7 @@ export interface JobsSelect<T extends boolean = true> {
  * via the `definition` "orders_select".
  */
 export interface OrdersSelect<T extends boolean = true> {
+  orderId?: T;
   service?: T;
   status?: T;
   total?: T;

@@ -3,8 +3,8 @@ import type { CollectionConfig } from 'payload'
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
-    useAsTitle: 'id',
-    defaultColumns: ['createdAt', 'status', 'total', 'service'],
+    useAsTitle: 'orderId',
+    defaultColumns: ['orderId', 'createdAt', 'status', 'total', 'service'],
   },
   access: {
     read: () => true,
@@ -12,6 +12,15 @@ export const Orders: CollectionConfig = {
     update: () => true, // Updating via webhook
   },
   fields: [
+    {
+      name: 'orderId',
+      type: 'text',
+      required: true,
+      unique: true,
+      admin: {
+        description: 'Custom order ID (ORD-YYYYMMDD-HHMMSS-XXXXX)',
+      },
+    },
     {
       name: 'service',
       type: 'relationship',

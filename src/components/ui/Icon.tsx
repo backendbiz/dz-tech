@@ -17,6 +17,7 @@ import {
   Clock,
   CheckCircle,
   ArrowRight,
+  ArrowLeft,
   Menu,
   X,
   ChevronDown,
@@ -26,6 +27,15 @@ import {
   Linkedin,
   Instagram,
   Youtube,
+  AlertCircle,
+  Info,
+  ShoppingCart,
+  CreditCard,
+  Lock,
+  Copy,
+  Check,
+  RefreshCw,
+  Headphones,
   type LucideProps,
 } from 'lucide-react'
 
@@ -49,6 +59,7 @@ const icons = {
   clock: Clock,
   'check-circle': CheckCircle,
   'arrow-right': ArrowRight,
+  'arrow-left': ArrowLeft,
   menu: Menu,
   x: X,
   'chevron-down': ChevronDown,
@@ -58,6 +69,15 @@ const icons = {
   linkedin: Linkedin,
   instagram: Instagram,
   youtube: Youtube,
+  'alert-circle': AlertCircle,
+  info: Info,
+  'shopping-cart': ShoppingCart,
+  'credit-card': CreditCard,
+  lock: Lock,
+  copy: Copy,
+  check: Check,
+  'refresh-cw': RefreshCw,
+  headphones: Headphones,
 }
 
 export type IconName = keyof typeof icons

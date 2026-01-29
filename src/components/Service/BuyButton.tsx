@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui'
+import { generateOrderId } from '@/lib/order-generator'
 
 interface BuyButtonProps {
   serviceId: string | number
@@ -10,28 +12,19 @@ interface BuyButtonProps {
 
 export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) {
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   const handleBuy = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ serviceId }),
-      })
+      // Generate a unique order ID
+      const orderId = generateOrderId()
 
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        console.error('No checkout URL returned')
-        // Optional: Show toast error
-      }
+      // Redirect to custom checkout page with order ID and service ID
+      const checkoutUrl = `/checkout?orderId=${orderId}&serviceId=${serviceId}`
+      router.push(checkoutUrl)
     } catch (error) {
       console.error('Error initiating checkout:', error)
-    } finally {
       setLoading(false)
     }
   }

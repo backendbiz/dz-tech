@@ -6,8 +6,6 @@ import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 import { s3Storage } from '@payloadcms/storage-s3'
 import { resendAdapter } from '@payloadcms/email-resend'
-import { stripePlugin } from '@payloadcms/plugin-stripe'
-import { checkoutSessionCompleted } from './stripe/webhooks'
 
 // Collections
 import { Users } from './collections/Users'
@@ -68,13 +66,6 @@ export default buildConfig({
           secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
         },
         region: process.env.S3_REGION,
-      },
-    }),
-    stripePlugin({
-      stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
-      stripeWebhooksEndpointSecret: process.env.STRIPE_WEBHOOKS_ENDPOINT_SECRET || '',
-      webhooks: {
-        'checkout.session.completed': checkoutSessionCompleted,
       },
     }),
   ],

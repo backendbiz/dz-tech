@@ -1,6 +1,8 @@
 'use client'
 import { Card, Button, Icon, type IconName } from '@/components/ui'
 import { cn } from '@/utils/cn'
+import { generateOrderId } from '@/lib/order-generator'
+import { useRouter } from 'next/navigation'
 
 interface Service {
   id: string
@@ -46,6 +48,8 @@ export function ServicesGrid({
     project: '/project',
     'one-time': '',
   }
+
+  const router = useRouter()
 
   return (
     <section className={cn('section bg-white', className)}>
@@ -124,21 +128,9 @@ export function ServicesGrid({
                   <Button
                     variant="secondary"
                     className="w-full"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/checkout', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({ serviceId: service.id }),
-                        })
-                        const { url } = await res.json()
-                        if (url) window.location.href = url
-                      } catch (err) {
-                        console.error('Checkout failed:', err)
-                        alert('Something went wrong initiating checkout.')
-                      }
+                    onClick={() => {
+                      const orderId = generateOrderId()
+                      router.push(`/checkout?orderId=${orderId}&serviceId=${service.id}`)
                     }}
                   >
                     Buy Now

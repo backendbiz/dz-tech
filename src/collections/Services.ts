@@ -1,17 +1,21 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
+import { encryptStripeKeys, decryptStripeKeysForAPI } from '@/hooks/stripeKeyHooks'
 
 export const Services: CollectionConfig = {
   slug: 'services',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'category', 'price', 'status'],
+    // Updated columns to show Stripe status
+    defaultColumns: ['title', 'category', 'price', 'stripeConfig.stripeKeyMode', 'status'],
   },
   access: {
     read: () => true,
   },
   hooks: {
     afterChange: [revalidate],
+    beforeChange: [encryptStripeKeys],
+    afterRead: [decryptStripeKeysForAPI],
   },
   fields: [
     {
@@ -145,6 +149,72 @@ export const Services: CollectionConfig = {
       admin: {
         position: 'sidebar',
       },
+    },
+    // Stripe Configuration - Per-service payment processing
+    {
+      name: 'stripeConfig',
+      type: 'group',
+      label: 'Stripe Configuration',
+      admin: {
+        description:
+          'Configure Stripe payment processing for this service. Leave empty to use the default Stripe account.',
+      },
+      fields: [
+        {
+          name: 'useCustomStripeAccount',
+          type: 'checkbox',
+          label: 'Use Custom Stripe Account',
+          defaultValue: false,
+          admin: {
+            description: 'Enable to use a different Stripe account for this service',
+          },
+        },
+        // Dashboard indicator for Stripe key mode
+        {
+          name: 'stripeKeyMode',
+          type: 'select',
+          label: 'Stripe Mode',
+          options: [
+            { label: '🟢 Live', value: 'live' },
+            { label: '🟡 Test', value: 'test' },
+            { label: '⚪ Default', value: 'unknown' },
+          ],
+          defaultValue: 'unknown',
+          admin: {
+            position: 'sidebar',
+            readOnly: true,
+            description: 'Automatically set based on your Stripe keys',
+            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
+          },
+        },
+        {
+          name: 'stripeSecretKey',
+          type: 'text',
+          label: 'Stripe Secret Key',
+          admin: {
+            description: 'The secret key starting with sk_live_ or sk_test_ (will be encrypted)',
+            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
+          },
+        },
+        {
+          name: 'stripePublishableKey',
+          type: 'text',
+          label: 'Stripe Publishable Key',
+          admin: {
+            description: 'The publishable key starting with pk_live_ or pk_test_',
+            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
+          },
+        },
+        {
+          name: 'stripeWebhookSecret',
+          type: 'text',
+          label: 'Webhook Signing Secret',
+          admin: {
+            description: 'The webhook endpoint secret starting with whsec_ (will be encrypted)',
+            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
+          },
+        },
+      ],
     },
   ],
 }
