@@ -403,7 +403,7 @@ export function SuccessClient() {
       </div>
 
       {/* Custom Animation Styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes bounce-slow {
           0%,
           100% {
