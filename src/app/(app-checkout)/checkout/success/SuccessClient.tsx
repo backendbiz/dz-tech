@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti'
 interface OrderInfo {
   orderId: string
   serviceName?: string
+  serviceId?: string
   price?: number
   createdAt?: string
   provider?: string | null
@@ -258,82 +259,71 @@ export function SuccessClient() {
 
   const headerContent = getHeaderContent()
 
-  return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 py-4">
-        <div className="container">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-linear-to-br from-blue-500 to-navy-900 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">DZ</span>
-              </div>
-              <span className="font-heading font-bold text-xl text-navy-900">DZTech</span>
-            </Link>
-          </div>
-        </div>
-      </header>
+  const tryAgainLink =
+    status === 'failed' && orderInfo?.serviceId
+      ? `/checkout?serviceId=${orderInfo.serviceId}${orderInfo.orderId ? `&orderId=${orderInfo.orderId}` : ''}`
+      : '/services'
 
-      {/* Main Content */}
-      <main className="py-12 md:py-20">
-        <div className="container max-w-2xl">
-          <Card className="text-center border border-gray-200 overflow-hidden" padding="none">
-            {/* Dynamic Header */}
-            <div className={`bg-linear-to-br ${headerContent.colorClass} px-8 py-10`}>
-              <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-white/20 mb-6 animate-bounce-slow">
-                <Icon
-                  name={headerContent.icon}
-                  className="h-14 w-14 text-white"
-                  strokeWidth={1.5}
-                />
+  return (
+    <main className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        <Card
+          className="text-center border border-gray-200 overflow-hidden shadow-xl"
+          padding="none"
+        >
+          {/* Dynamic Header */}
+          <div className={`bg-linear-to-br ${headerContent.colorClass} px-8 py-10`}>
+            <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-white/20 mb-6 animate-bounce-slow">
+              <Icon name={headerContent.icon} className="h-14 w-14 text-white" strokeWidth={1.5} />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+              {headerContent.title}
+            </h1>
+            <p className="text-opacity-90 text-white text-lg">{headerContent.message}</p>
+          </div>
+
+          {/* Order Details */}
+          <div className="px-8 py-8">
+            {/* Order ID */}
+            <div className="mb-8 p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-2">Your Order Reference</p>
+              <div className="flex items-center justify-center gap-3">
+                <span className="font-mono font-bold text-lg text-navy-900 truncate max-w-xs">
+                  {displayOrderId}
+                </span>
+                <button
+                  onClick={copyOrderId}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Icon name={copied ? 'check' : 'clipboard'} className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm text-gray-600">{copied ? 'Copied!' : 'Copy'}</span>
+                </button>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                {headerContent.title}
-              </h1>
-              <p className="text-opacity-90 text-white text-lg">{headerContent.message}</p>
             </div>
 
-            {/* Order Details */}
-            <div className="px-8 py-8">
-              {/* Order ID */}
-              <div className="mb-8 p-4 bg-gray-50 rounded-xl">
-                <p className="text-sm text-gray-500 mb-2">Your Order Reference</p>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="font-mono font-bold text-lg text-navy-900 truncate max-w-xs">
-                    {displayOrderId}
-                  </span>
-                  <button
-                    onClick={copyOrderId}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <Icon name={copied ? 'check' : 'clipboard'} className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm text-gray-600">{copied ? 'Copied!' : 'Copy'}</span>
-                  </button>
-                </div>
+            {/* Order Summary */}
+            {orderInfo && (orderInfo.serviceName || orderInfo.price) && (
+              <div className="mb-8 p-4 bg-blue-50 rounded-xl text-left">
+                <h3 className="font-semibold text-navy-900 mb-3">Order Summary</h3>
+                {orderInfo.serviceName && (
+                  <div className="flex justify-between py-2 border-b border-blue-100">
+                    <span className="text-gray-600">Service</span>
+                    <span className="font-medium text-navy-900">{orderInfo.serviceName}</span>
+                  </div>
+                )}
+                {orderInfo.price && (
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">Amount Paid</span>
+                    <span className="font-bold text-blue-500">
+                      ${orderInfo.price.toLocaleString()}
+                    </span>
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Order Summary */}
-              {orderInfo && (orderInfo.serviceName || orderInfo.price) && (
-                <div className="mb-8 p-4 bg-blue-50 rounded-xl text-left">
-                  <h3 className="font-semibold text-navy-900 mb-3">Order Summary</h3>
-                  {orderInfo.serviceName && (
-                    <div className="flex justify-between py-2 border-b border-blue-100">
-                      <span className="text-gray-600">Service</span>
-                      <span className="font-medium text-navy-900">{orderInfo.serviceName}</span>
-                    </div>
-                  )}
-                  {orderInfo.price && (
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600">Amount Paid</span>
-                      <span className="font-bold text-blue-500">
-                        ${orderInfo.price.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* What's Next */}
+            {/* What's Next - Only show on success */}
+            {status === 'success' && (
               <div className="mb-8">
                 <h3 className="font-semibold text-navy-900 mb-4 flex items-center justify-center gap-2">
                   <Icon name="info" className="h-5 w-5 text-blue-500" />
@@ -366,8 +356,10 @@ export function SuccessClient() {
                   </li>
                 </ol>
               </div>
+            )}
 
-              {/* Important Note */}
+            {/* Important Note - Only show on success */}
+            {status === 'success' && (
               <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-left">
                 <div className="flex gap-3">
                   <Icon name="alert-circle" className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
@@ -380,47 +372,35 @@ export function SuccessClient() {
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button variant="primary" href="/services">
-                  Browse More Services
-                </Button>
-                <Button variant="outline" href="/contact">
-                  Contact Support
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Need Help */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-500 text-sm">
-              Questions about your order?{' '}
-              <Link href="/contact" className="text-blue-500 hover:text-blue-600 font-medium">
-                Contact our support team
-              </Link>
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
-        <div className="container">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-            <p>© 2026 DZTech. All rights reserved.</p>
-            <div className="flex items-center gap-6">
-              <Link href="/privacy" className="hover:text-gray-700">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-gray-700">
-                Terms of Service
-              </Link>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button variant="primary" href={tryAgainLink}>
+                {status === 'failed' ? 'Try Again' : 'Browse More Services'}
+              </Button>
+              <Button variant="outline" href="/contact">
+                Contact Support
+              </Button>
             </div>
           </div>
+        </Card>
+
+        {/* Need Help */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-500 text-sm">
+            Questions about your order?{' '}
+            <Link href="/contact" className="text-blue-500 hover:text-blue-600 font-medium">
+              Contact our support team
+            </Link>
+          </p>
         </div>
-      </footer>
+
+        {/* Minimal Footer */}
+        <div className="mt-6 text-center text-xs text-gray-400">
+          <p>© 2026 DZTech. All rights reserved.</p>
+        </div>
+      </div>
 
       {/* Custom Animation Styles */}
       <style jsx>{`
@@ -437,6 +417,6 @@ export function SuccessClient() {
           animation: bounce-slow 2s ease-in-out infinite;
         }
       `}</style>
-    </div>
+    </main>
   )
 }
