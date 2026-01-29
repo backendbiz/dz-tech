@@ -97,6 +97,11 @@ export function CheckoutClient() {
 
         const paymentData = await paymentResponse.json()
 
+        // Use the actual amount from the payment intent (handles custom amounts)
+        if (paymentData.amount) {
+          service.price = paymentData.amount
+        }
+
         setState((prev) => ({
           ...prev,
           loading: false,
