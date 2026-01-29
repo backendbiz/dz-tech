@@ -357,44 +357,8 @@ export function SuccessClient() {
                 </ol>
               </div>
             )}
-
-            {/* Important Note - Only show on success */}
-            {status === 'success' && (
-              <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-left">
-                <div className="flex gap-3">
-                  <Icon name="alert-circle" className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-yellow-800 mb-1">Save Your Order ID</p>
-                    <p className="text-sm text-yellow-700">
-                      Please save your order reference number. You&apos;ll need it for any inquiries
-                      about your order.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="primary" href={tryAgainLink}>
-                {status === 'failed' ? 'Try Again' : 'Browse More Services'}
-              </Button>
-              <Button variant="outline" href="/contact">
-                Contact Support
-              </Button>
-            </div>
           </div>
         </Card>
-
-        {/* Need Help */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500 text-sm">
-            Questions about your order?{' '}
-            <Link href="/contact" className="text-blue-500 hover:text-blue-600 font-medium">
-              Contact our support team
-            </Link>
-          </p>
-        </div>
 
         {/* Minimal Footer */}
         <div className="mt-6 text-center text-xs text-gray-400">
