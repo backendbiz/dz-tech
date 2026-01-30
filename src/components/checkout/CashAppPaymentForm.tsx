@@ -34,10 +34,12 @@ export function CashAppPaymentForm({
 
     const origin = window.location.origin
 
+    // Return to the same checkout page with status params
+    // The checkout page will handle displaying success/failure UI
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${origin}/checkout/success?orderId=${orderId}`,
+        return_url: `${origin}/checkout?orderId=${orderId}`,
       },
     })
 

@@ -4,7 +4,7 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'id',
-    defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider'],
+    defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider', 'stripePaymentLinkId'],
   },
   access: {
     read: () => true,
@@ -12,6 +12,15 @@ export const Orders: CollectionConfig = {
     update: () => true, // Updating via webhook
   },
   fields: [
+    {
+      name: 'orderId',
+      type: 'text',
+      label: 'Order ID (Client)',
+      index: true,
+      admin: {
+        description: 'Client-generated order ID (e.g. ORD-...)',
+      },
+    },
     {
       name: 'externalId',
       type: 'text',
@@ -73,6 +82,15 @@ export const Orders: CollectionConfig = {
       index: true,
       admin: {
         readOnly: true,
+      },
+    },
+    {
+      name: 'stripePaymentLinkId',
+      type: 'text',
+      index: true,
+      admin: {
+        readOnly: true,
+        description: 'Stripe Payment Link ID used for this order (if applicable)',
       },
     },
     {

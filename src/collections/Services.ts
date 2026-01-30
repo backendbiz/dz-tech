@@ -1,21 +1,20 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { encryptStripeKeys, decryptStripeKeysForAPI } from '@/hooks/stripeKeyHooks'
+import { manageStripePaymentLink } from '@/hooks/manageStripePaymentLink'
 
 export const Services: CollectionConfig = {
   slug: 'services',
   admin: {
     useAsTitle: 'title',
     // Updated columns to show Stripe status
-    defaultColumns: ['title', 'category', 'price', 'stripeConfig.stripeKeyMode', 'status'],
+    defaultColumns: ['title', 'category', 'price', 'status'],
   },
   access: {
     read: () => true,
   },
   hooks: {
     afterChange: [revalidate],
-    beforeChange: [encryptStripeKeys],
-    afterRead: [decryptStripeKeysForAPI],
+    beforeChange: [manageStripePaymentLink],
   },
   fields: [
     {
@@ -150,71 +149,40 @@ export const Services: CollectionConfig = {
         position: 'sidebar',
       },
     },
-    // Stripe Configuration - Per-service payment processing
+    // Auto-generated Stripe Fields
     {
-      name: 'stripeConfig',
-      type: 'group',
-      label: 'Stripe Configuration',
+      name: 'stripeProductId',
+      type: 'text',
       admin: {
-        description:
-          'Configure Stripe payment processing for this service. Leave empty to use the default Stripe account.',
+        readOnly: true,
+        hidden: true,
       },
-      fields: [
-        {
-          name: 'useCustomStripeAccount',
-          type: 'checkbox',
-          label: 'Use Custom Stripe Account',
-          defaultValue: false,
-          admin: {
-            description: 'Enable to use a different Stripe account for this service',
-          },
-        },
-        // Dashboard indicator for Stripe key mode
-        {
-          name: 'stripeKeyMode',
-          type: 'select',
-          label: 'Stripe Mode',
-          options: [
-            { label: '🟢 Live', value: 'live' },
-            { label: '🟡 Test', value: 'test' },
-            { label: '⚪ Default', value: 'unknown' },
-          ],
-          defaultValue: 'unknown',
-          admin: {
-            position: 'sidebar',
-            readOnly: true,
-            description: 'Automatically set based on your Stripe keys',
-            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
-          },
-        },
-        {
-          name: 'stripeSecretKey',
-          type: 'text',
-          label: 'Stripe Secret Key',
-          admin: {
-            description: 'The secret key starting with sk_live_ or sk_test_ (will be encrypted)',
-            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
-          },
-        },
-        {
-          name: 'stripePublishableKey',
-          type: 'text',
-          label: 'Stripe Publishable Key',
-          admin: {
-            description: 'The publishable key starting with pk_live_ or pk_test_',
-            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
-          },
-        },
-        {
-          name: 'stripeWebhookSecret',
-          type: 'text',
-          label: 'Webhook Signing Secret',
-          admin: {
-            description: 'The webhook endpoint secret starting with whsec_ (will be encrypted)',
-            condition: (data) => data?.stripeConfig?.useCustomStripeAccount,
-          },
-        },
-      ],
+    },
+    {
+      name: 'stripePriceId',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        hidden: true,
+      },
+    },
+    {
+      name: 'stripePaymentLinkId',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        hidden: true,
+      },
+    },
+    {
+      name: 'stripePaymentLinkUrl',
+      type: 'text',
+      label: 'Payment Link URL',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Auto-generated Stripe Payment Link',
+      },
     },
   ],
 }

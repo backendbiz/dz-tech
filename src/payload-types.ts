@@ -573,31 +573,13 @@ export interface Service {
   order?: number | null;
   status: 'draft' | 'published';
   featured?: boolean | null;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
+  stripePaymentLinkId?: string | null;
   /**
-   * Configure Stripe payment processing for this service. Leave empty to use the default Stripe account.
+   * Auto-generated Stripe Payment Link
    */
-  stripeConfig?: {
-    /**
-     * Enable to use a different Stripe account for this service
-     */
-    useCustomStripeAccount?: boolean | null;
-    /**
-     * Automatically set based on your Stripe keys
-     */
-    stripeKeyMode?: ('live' | 'test' | 'unknown') | null;
-    /**
-     * The secret key starting with sk_live_ or sk_test_ (will be encrypted)
-     */
-    stripeSecretKey?: string | null;
-    /**
-     * The publishable key starting with pk_live_ or pk_test_
-     */
-    stripePublishableKey?: string | null;
-    /**
-     * The webhook endpoint secret starting with whsec_ (will be encrypted)
-     */
-    stripeWebhookSecret?: string | null;
-  };
+  stripePaymentLinkUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -649,6 +631,10 @@ export interface Job {
 export interface Order {
   id: string;
   /**
+   * Client-generated order ID (e.g. ORD-...)
+   */
+  orderId?: string | null;
+  /**
    * Provider's internal order/transaction ID for tracking
    */
   externalId?: string | null;
@@ -665,6 +651,10 @@ export interface Order {
   quantity?: number | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
+  /**
+   * Stripe Payment Link ID used for this order (if applicable)
+   */
+  stripePaymentLinkId?: string | null;
   customerEmail?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1240,15 +1230,10 @@ export interface ServicesSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   featured?: T;
-  stripeConfig?:
-    | T
-    | {
-        useCustomStripeAccount?: T;
-        stripeKeyMode?: T;
-        stripeSecretKey?: T;
-        stripePublishableKey?: T;
-        stripeWebhookSecret?: T;
-      };
+  stripeProductId?: T;
+  stripePriceId?: T;
+  stripePaymentLinkId?: T;
+  stripePaymentLinkUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1296,6 +1281,7 @@ export interface JobsSelect<T extends boolean = true> {
  * via the `definition` "orders_select".
  */
 export interface OrdersSelect<T extends boolean = true> {
+  orderId?: T;
   externalId?: T;
   provider?: T;
   service?: T;
@@ -1304,6 +1290,7 @@ export interface OrdersSelect<T extends boolean = true> {
   quantity?: T;
   stripeSessionId?: T;
   stripePaymentIntentId?: T;
+  stripePaymentLinkId?: T;
   customerEmail?: T;
   updatedAt?: T;
   createdAt?: T;

@@ -178,6 +178,50 @@ export async function cancelPaymentIntent(
   return stripe.paymentIntents.cancel(paymentIntentId)
 }
 
+/**
+ * Generate a Payment Link for a specific amount and product name
+ */
+export async function createPaymentLink({
+  amount,
+  currency = 'usd',
+  productName,
+  metadata = {},
+  stripeSecretKey,
+}: {
+  amount: number
+  currency?: string
+  productName: string
+  metadata?: Record<string, string>
+  stripeSecretKey?: string
+}): Promise<Stripe.PaymentLink> {
+  const stripe = stripeSecretKey ? getStripeForService(stripeSecretKey) : getStripe()
+
+  // 1. Create a Price (and implicitly a Product)
+  const price = await stripe.prices.create({
+    currency,
+    unit_amount: Math.round(amount * 100),
+    product_data: {
+      name: productName,
+      metadata,
+    },
+    metadata,
+  })
+
+  // 2. Create the Payment Link
+  const paymentLink = await stripe.paymentLinks.create({
+    line_items: [
+      {
+        price: price.id,
+        quantity: 1,
+      },
+    ],
+    metadata,
+    // Add any other default behavior here (e.g. redirect URLs)
+  })
+
+  return paymentLink
+}
+
 // ============================================
 // Configuration
 // ============================================
