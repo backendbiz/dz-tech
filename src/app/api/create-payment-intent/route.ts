@@ -1,11 +1,6 @@
 import { getPayloadClient } from '@/lib/payload'
 import { NextResponse } from 'next/server'
-import {
-  getStripe,
-  getStripeForService,
-  getStripeCredentialsForService,
-  type ServiceStripeConfig,
-} from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { isValidApiKeyFormat } from '@/lib/api-key'
 import type { Payload } from 'payload'
 import type { Service, Order, Provider } from '@/payload-types'
@@ -24,7 +19,6 @@ async function createPendingOrderWithRetry(
     providerId?: string
     externalId?: string
     clientOrderId?: string
-    paymentLinkId?: string // Track which Payment Link was used
   },
   maxRetries: number = 3,
 ): Promise<Order> {
@@ -62,8 +56,6 @@ async function createPendingOrderWithRetry(
           ...(orderData.externalId && { externalId: orderData.externalId }),
           // Store client-generated Order ID
           ...(orderData.clientOrderId && { orderId: orderData.clientOrderId }),
-          // Store Payment Link ID for tracking
-          ...(orderData.paymentLinkId && { stripePaymentLinkId: orderData.paymentLinkId }),
         },
       })
 
@@ -182,7 +174,6 @@ export async function POST(req: Request) {
     let providerName: string | undefined
     let successRedirectUrl: string | undefined
     let cancelRedirectUrl: string | undefined
-    let resolvedPaymentLinkId: string | undefined // Track which Payment Link was used
 
     // Check if we are resuming an existing order
     let existingOrder: Order | null = null
@@ -226,7 +217,7 @@ export async function POST(req: Request) {
             console.log(`Resuming existing order: ${existingOrder.id}`)
           }
         }
-      } catch (e) {
+      } catch (_e) {
         console.warn('Could not find existing order:', incomingOrderId)
         // If not found, ignore and continue to create new (or fail if strictly required)
       }
@@ -244,10 +235,21 @@ export async function POST(req: Request) {
             existingOrder.stripePaymentIntentId,
           )
 
+          // Check if Stripe status is succeeded but DB is not updated yet (webhook lag)
+          // Only override if the order is not already in a final state like disputed or refunded
+          let effectiveStatus = existingOrder.status
+          if (
+            paymentIntent.status === 'succeeded' &&
+            (effectiveStatus === 'pending' || effectiveStatus === 'failed')
+          ) {
+            effectiveStatus = 'paid'
+          }
+
           // Return the existing session details
           return NextResponse.json({
             clientSecret: paymentIntent.client_secret,
             orderId: existingOrder.id,
+            status: effectiveStatus,
             checkoutUrl: `${process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'}/checkout?serviceId=${service.id}&orderId=${existingOrder.id}`,
             amount: existingOrder.total,
             quantity: existingOrder.quantity || 1,
@@ -296,112 +298,6 @@ export async function POST(req: Request) {
       cancelRedirectUrl = providerResult.provider.cancelRedirectUrl || undefined
 
       console.log(`Provider "${providerName}" authenticated, using service: ${service.title}`)
-    } else if (body.paymentLinkId) {
-      // === Payment Link Flow ===
-      // Resolve details from Stripe Payment Link
-      // 1. Get default Stripe instance (Payment Links are usually on the main account)
-      const defaultStripe = getStripe()
-
-      // Sanitize Payment Link ID (handle full URLs)
-      let linkId = body.paymentLinkId
-      if (linkId.includes('/')) {
-        const match = linkId.match(/(plink_[a-zA-Z0-9]+)/)
-        if (match) {
-          linkId = match[1]
-        }
-      }
-
-      // Store the resolved Payment Link ID for tracking
-      resolvedPaymentLinkId = linkId
-
-      console.log('Processing Payment Link Flow:', linkId)
-
-      try {
-        // 2. Fetch the payment link with expanded line items to get price/product
-        const paymentLink = await defaultStripe.paymentLinks.retrieve(linkId, {
-          expand: ['line_items', 'line_items.data.price', 'line_items.data.price.product'],
-        })
-
-        if (!paymentLink.active) {
-          return NextResponse.json({ error: 'This payment link is inactive' }, { status: 400 })
-        }
-
-        const lineItems = paymentLink.line_items?.data
-        if (!lineItems || lineItems.length === 0) {
-          return NextResponse.json({ error: 'Payment link has no items' }, { status: 400 })
-        }
-
-        // We currently support single-item payment links for this flow
-        const primaryItem = lineItems[0]
-        const priceObj = primaryItem.price as any
-        const productObj = priceObj?.product as any
-
-        // Calculate amount (convert cents to dollars for our system)
-        // Note: quantity is on the line item
-        const unitAmount = priceObj?.unit_amount || 0
-        const linkQuantity = primaryItem.quantity || 1
-        const totalAmountCents = unitAmount * linkQuantity
-        const totalAmountDollars = totalAmountCents / 100
-
-        // 3. Find the matching local Service
-        // Priority A: Check metadata on the Payment Link itself
-        const metadataServiceId = paymentLink.metadata?.serviceId
-
-        if (metadataServiceId) {
-          const foundService = await payload.findByID({
-            collection: 'services',
-            id: metadataServiceId,
-          })
-          if (foundService) {
-            service = foundService
-          }
-        }
-
-        // Priority B: Match by Product Name -> Service Title
-        if (!service && productObj?.name) {
-          const { docs } = await payload.find({
-            collection: 'services',
-            where: {
-              title: { equals: productObj.name },
-            },
-            limit: 1,
-          })
-          if (docs.length > 0) {
-            service = docs[0]
-          }
-        }
-
-        if (service) {
-          console.log('Successfully resolved Service from Link:', service.title)
-        }
-
-        if (!service) {
-          return NextResponse.json(
-            {
-              error: 'Service not found for this Payment Link',
-              details:
-                'Please ensure the Payment Link metadata has "serviceId" or the Product Name matches a Service Title.',
-            },
-            { status: 404 },
-          )
-        }
-
-        // Override the amount associated with the service for this transaction
-        // (Since the Payment Link might have a specific price different from the Service default)
-        // We will set logic below to use this specific `totalAmountDollars`
-
-        // Hack: We need to pass this amount to the logic below.
-        // We'll inject it into `body.amount` so the existing logic picks it up (if we want overwrite)
-        // OR we just set a flag.
-        // Let's set a local variable `amountFromLink` handling.
-        body.amount = totalAmountDollars
-      } catch (stripeError) {
-        console.error('Error resolving Payment Link:', stripeError)
-        return NextResponse.json(
-          { error: 'Failed to resolve Payment Link details' },
-          { status: 500 },
-        )
-      }
     } else if (serviceId && !existingOrder) {
       // Only look up service if we didn't already find it via order
       // Direct service ID request (existing behavior)
@@ -503,11 +399,7 @@ export async function POST(req: Request) {
       idempotencyKey = `pi_${service.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`
     }
 
-    // Build a descriptive description for easy identification in Stripe Dashboard
-    // Format: "ServiceName | PaymentLink: plink_xxx" or "ServiceName | Direct"
-    const paymentDescription = resolvedPaymentLinkId
-      ? `${service.title} | PaymentLink: ${resolvedPaymentLinkId}`
-      : `${service.title} | Direct${providerName ? ` (${providerName})` : ''}`
+    const paymentDescription = `${service.title} | Direct${providerName ? ` (${providerName})` : ''}`
 
     // Create a PaymentIntent using the service's Stripe account
     // Note: Cash App is only available for US-based Stripe accounts
@@ -521,8 +413,6 @@ export async function POST(req: Request) {
         description: paymentDescription,
         metadata: {
           serviceId: service.id,
-          // Store Payment Link ID for Stripe Dashboard filtering (priority field)
-          ...(resolvedPaymentLinkId && { paymentLinkId: resolvedPaymentLinkId }),
           // Store provider info if applicable
           ...(providerId && { providerId }),
           // Store external ID for provider tracking
@@ -545,7 +435,6 @@ export async function POST(req: Request) {
         providerId,
         externalId,
         clientOrderId: incomingOrderId, // Pass frontend ID
-        paymentLinkId: resolvedPaymentLinkId, // Track Payment Link usage
       })
       orderId = order.id
     } catch (dbError) {

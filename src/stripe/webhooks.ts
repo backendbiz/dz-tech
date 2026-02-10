@@ -1,7 +1,6 @@
 import { getPayloadClient } from '@/lib/payload'
 import type { Order, Provider, Service } from '@/payload-types'
 
-
 /**
  * Notify a provider about a payment status change via their webhook URL
  * Implements exponential backoff retry mechanism
@@ -40,7 +39,7 @@ async function notifyProvider(
   while (attempt < maxRetries && !success) {
     try {
       attempt++
-      
+
       // Calculate delay with exponential backoff if this is a retry
       // Attempt 1: 0ms (immediate)
       // Attempt 2: 1000ms
@@ -49,7 +48,9 @@ async function notifyProvider(
       // Attempt 5: 8000ms
       if (attempt > 1) {
         const delay = Math.pow(2, attempt - 2) * 1000
-        console.log(`Retry attempt ${attempt}/${maxRetries} for provider ${provider.name} in ${delay}ms...`)
+        console.log(
+          `Retry attempt ${attempt}/${maxRetries} for provider ${provider.name} in ${delay}ms...`,
+        )
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
@@ -71,76 +72,18 @@ async function notifyProvider(
         )
       }
     } catch (error) {
-      console.error(`Error notifying provider ${provider.name} (Attempt ${attempt}/${maxRetries}):`, error)
+      console.error(
+        `Error notifying provider ${provider.name} (Attempt ${attempt}/${maxRetries}):`,
+        error,
+      )
     }
   }
 
   if (!success) {
-    console.error(`Failed to notify provider ${provider.name} after ${maxRetries} attempts for order ${order.id}`)
+    console.error(
+      `Failed to notify provider ${provider.name} after ${maxRetries} attempts for order ${order.id}`,
+    )
     // TODO: Ideally we should log this to a failed_webhooks collection for manual replay
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const checkoutSessionCompleted = async ({ event }: any) => {
-  const session = event.data.object
-  const { serviceId } = session.metadata || {}
-  const paymentIntentId = session.payment_intent as string
-
-  if (serviceId && paymentIntentId) {
-    const payload = await getPayloadClient()
-
-    try {
-      // Find order by payment intent ID
-      const existingOrders = await payload.find({
-        collection: 'orders',
-        where: {
-          stripePaymentIntentId: { equals: paymentIntentId },
-        },
-        depth: 1, // Populate provider and service
-      })
-
-      if (existingOrders.docs.length > 0) {
-        const existingOrder = existingOrders.docs[0]
-
-        // Update existing order
-        await payload.update({
-          collection: 'orders',
-          id: existingOrder.id,
-          data: {
-            status: 'paid',
-            stripeSessionId: session.id,
-            customerEmail: session.customer_details?.email || undefined,
-          },
-        })
-        console.log(`Order ${existingOrder.id} updated to paid status`)
-
-        // Notify provider if applicable
-        if (existingOrder.provider && typeof existingOrder.provider === 'object') {
-          await notifyProvider(
-            existingOrder.provider as Provider,
-            { ...existingOrder, status: 'paid' },
-            'payment_succeeded',
-          )
-        }
-      } else {
-        // Create new order
-        const newOrder = await payload.create({
-          collection: 'orders',
-          data: {
-            service: serviceId,
-            status: 'paid',
-            total: session.amount_total / 100,
-            stripeSessionId: session.id,
-            stripePaymentIntentId: paymentIntentId,
-            customerEmail: session.customer_details?.email || undefined,
-          },
-        })
-        console.log(`Order ${newOrder.id} created for session ${session.id}`)
-      }
-    } catch (error) {
-      console.error('Error creating/updating order:', error)
-    }
   }
 }
 
@@ -264,4 +207,80 @@ export const paymentIntentFailed = async ({ event }: any) => {
   } catch (error) {
     console.error('Error updating failed order:', error)
   }
+}
+
+// Helper function to update order dispute status
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function updateOrderDisputeStatus(dispute: any) {
+  const payload = await getPayloadClient()
+  const paymentIntentId = dispute.payment_intent as string
+
+  try {
+    // Find order by payment intent ID
+    const existingOrders = await payload.find({
+      collection: 'orders',
+      where: {
+        stripePaymentIntentId: { equals: paymentIntentId },
+      },
+      limit: 1,
+    })
+
+    if (existingOrders.docs.length > 0) {
+      const order = existingOrders.docs[0]
+
+      // Map Stripe dispute status to our status options
+      const statusMap: Record<string, string> = {
+        warning_needs_response: 'warning_needs_response',
+        warning_under_review: 'warning_under_review',
+        warning_closed: 'warning_closed',
+        needs_response: 'needs_response',
+        under_review: 'under_review',
+        won: 'won',
+        lost: 'lost',
+      }
+
+      const disputeStatus = statusMap[dispute.status] || dispute.status
+
+      await payload.update({
+        collection: 'orders',
+        id: order.id,
+        data: {
+          status: 'disputed', // Update main status to disputed
+          disputeId: dispute.id,
+          disputeStatus: disputeStatus,
+          disputeAmount: dispute.amount / 100, // Convert cents to dollars
+          disputeReason: dispute.reason,
+        },
+      })
+      console.log(`Order ${order.id} updated with dispute status: ${disputeStatus}`)
+    } else {
+      console.warn(`No order found for disputed payment intent: ${paymentIntentId}`)
+    }
+  } catch (error) {
+    console.error('Error updating order dispute status:', error)
+  }
+}
+
+// Handle dispute created
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const handleDisputeCreated = async ({ event }: any) => {
+  const dispute = event.data.object
+  console.log(`Dispute created: ${dispute.id}`)
+  await updateOrderDisputeStatus(dispute)
+}
+
+// Handle dispute updated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const handleDisputeUpdated = async ({ event }: any) => {
+  const dispute = event.data.object
+  console.log(`Dispute updated: ${dispute.id} for status: ${dispute.status}`)
+  await updateOrderDisputeStatus(dispute)
+}
+
+// Handle dispute closed
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const handleDisputeClosed = async ({ event }: any) => {
+  const dispute = event.data.object
+  console.log(`Dispute closed: ${dispute.id} with status: ${dispute.status}`)
+  await updateOrderDisputeStatus(dispute)
 }

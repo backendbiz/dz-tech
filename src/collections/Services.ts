@@ -1,6 +1,5 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { manageStripePaymentLink } from '@/hooks/manageStripePaymentLink'
 
 export const Services: CollectionConfig = {
   slug: 'services',
@@ -14,7 +13,6 @@ export const Services: CollectionConfig = {
   },
   hooks: {
     afterChange: [revalidate],
-    beforeChange: [manageStripePaymentLink],
   },
   fields: [
     {
@@ -147,41 +145,6 @@ export const Services: CollectionConfig = {
       defaultValue: false,
       admin: {
         position: 'sidebar',
-      },
-    },
-    // Auto-generated Stripe Fields
-    {
-      name: 'stripeProductId',
-      type: 'text',
-      admin: {
-        readOnly: true,
-        hidden: true,
-      },
-    },
-    {
-      name: 'stripePriceId',
-      type: 'text',
-      admin: {
-        readOnly: true,
-        hidden: true,
-      },
-    },
-    {
-      name: 'stripePaymentLinkId',
-      type: 'text',
-      admin: {
-        readOnly: true,
-        hidden: true,
-      },
-    },
-    {
-      name: 'stripePaymentLinkUrl',
-      type: 'text',
-      label: 'Payment Link URL',
-      admin: {
-        position: 'sidebar',
-        readOnly: true,
-        description: 'Auto-generated Stripe Payment Link',
       },
     },
   ],

@@ -38,7 +38,11 @@ export default buildConfig({
       titleSuffix: '- Consulting CMS',
     },
     components: {
-      // beforeDashboard: [SeedButton as any],
+      views: {
+        dashboard: {
+          Component: '@/components/AdminDashboard#AdminDashboard',
+        },
+      },
     },
   },
   collections: [

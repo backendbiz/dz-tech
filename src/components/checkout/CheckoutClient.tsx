@@ -34,6 +34,22 @@ interface CheckoutState {
 // Payment result status from Stripe redirect
 type PaymentResultStatus = 'succeeded' | 'processing' | 'failed' | null
 
+interface PaymentData {
+  clientSecret: string
+  orderId: string
+  status?: 'paid' | 'failed' | 'disputed' | 'refunded' | 'pending'
+  checkoutUrl?: string
+  amount: number
+  quantity?: number
+  serviceName?: string
+  serviceId: string
+  stripePublishableKey?: string
+  provider?: string
+  providerId?: string
+  successRedirectUrl?: string
+  cancelRedirectUrl?: string
+}
+
 /**
  * Replace {orderId} placeholder in URL with actual orderId
  */
@@ -45,7 +61,6 @@ export function CheckoutClient() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get('orderId')
   const serviceId = searchParams.get('serviceId')
-  const paymentLinkId = searchParams.get('paymentLinkId')
   const status = searchParams.get('status')
 
   // Stripe redirect params (added after Cash App payment)
@@ -70,89 +85,62 @@ export function CheckoutClient() {
   const [redirecting, setRedirecting] = useState(false)
   const [redirectCountdown, setRedirectCountdown] = useState(5)
   // Actual payment status (verified from PaymentIntent, not just redirect_status)
-  const [paymentStatus, setPaymentStatus] = useState<'succeeded' | 'processing' | 'failed' | 'pending' | null>(null)
+  const [paymentStatus, setPaymentStatus] = useState<
+    'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
+  >(null)
 
   // Fetch service details and create payment intent
   // Note: Duplicate calls are safely handled by Stripe's idempotency key on the backend
   useEffect(() => {
     async function initializeCheckout() {
-      if (!serviceId && !paymentLinkId) {
+      if (!serviceId) {
         setState((prev) => ({
           ...prev,
           loading: false,
-          error: 'No service or payment link selected. Please go back and select a service.',
+          error: 'No service selected. Please go back and select a service.',
         }))
         return
       }
 
       try {
-        let currentService: ServiceData
-        let paymentData
+        // === Standard Service ID Flow ===
+        // 1. First, fetch service details
+        const serviceResponse = await fetch(`/api/services/${serviceId}`)
+        if (!serviceResponse.ok) {
+          throw new Error('Service not found')
+        }
+        const currentService: ServiceData = await serviceResponse.json()
 
-        if (paymentLinkId) {
-          // === Path A: Payment Link Flow ===
-          // 1. Create intent first (resolves service from link)
-          const paymentResponse = await fetch('/api/create-payment-intent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              paymentLinkId,
-              orderId,
-            }),
-          })
+        // 2. Then, create a payment intent
+        const paymentResponse = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            serviceId,
+            orderId,
+          }),
+        })
 
-          if (!paymentResponse.ok) {
-            const errorData = await paymentResponse.json()
-            const error = new Error(
-              errorData.error || 'Failed to initialize payment from link',
-            ) as Error & {
-              code?: string
-            }
-            error.code = errorData.errorCode
-            throw error
+        if (!paymentResponse.ok) {
+          const errorData = await paymentResponse.json()
+          const error = new Error(errorData.error || 'Failed to initialize payment') as Error & {
+            code?: string
           }
+          error.code = errorData.errorCode
+          throw error
+        }
 
-          paymentData = await paymentResponse.json()
+        const paymentData: PaymentData = await paymentResponse.json()
 
-          // 2. Fetch service details using the resolved ID
-          const serviceResponse = await fetch(`/api/services/${paymentData.serviceId}`)
-          if (!serviceResponse.ok) {
-            throw new Error('Associated service not found')
-          }
-          currentService = await serviceResponse.json()
-        } else {
-          // === Path B: Standard Service ID Flow ===
-          // 1. First, fetch service details
-          const serviceResponse = await fetch(`/api/services/${serviceId}`)
-          if (!serviceResponse.ok) {
-            throw new Error('Service not found')
-          }
-          currentService = await serviceResponse.json()
-
-          // 2. Then, create a payment intent
-          const paymentResponse = await fetch('/api/create-payment-intent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              serviceId,
-              orderId,
-            }),
-          })
-
-          if (!paymentResponse.ok) {
-            const errorData = await paymentResponse.json()
-            const error = new Error(errorData.error || 'Failed to initialize payment') as Error & {
-              code?: string
-            }
-            error.code = errorData.errorCode
-            throw error
-          }
-
-          paymentData = await paymentResponse.json()
+        // Check if order is already processed
+        if (paymentData.status === 'paid') {
+          setPaymentStatus('succeeded')
+        } else if (paymentData.status === 'failed') {
+          setPaymentStatus('failed')
+        } else if (paymentData.status === 'disputed' || paymentData.status === 'refunded') {
+          setPaymentStatus('disputed')
         }
 
         // Common: Update service price with actual amount from intent (handles overrides/links)
@@ -166,7 +154,7 @@ export function CheckoutClient() {
           service: currentService,
           clientSecret: paymentData.clientSecret,
           paymentOrderId: paymentData.orderId,
-          stripePublishableKey: paymentData.stripePublishableKey,
+          stripePublishableKey: paymentData.stripePublishableKey || null,
           provider: paymentData.provider || null,
           successRedirectUrl: paymentData.successRedirectUrl || null,
           cancelRedirectUrl: paymentData.cancelRedirectUrl || null,
@@ -184,7 +172,7 @@ export function CheckoutClient() {
     }
 
     initializeCheckout()
-  }, [serviceId, orderId, paymentLinkId])
+  }, [serviceId, orderId])
 
   // Store order ID and provider info in localStorage
   useEffect(() => {
@@ -227,24 +215,38 @@ export function CheckoutClient() {
       try {
         // Dynamically import Stripe to verify payment status
         const { loadStripe } = await import('@stripe/stripe-js')
-        const publishableKey = state.stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-        
+        const publishableKey =
+          state.stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
         if (!publishableKey) {
           console.error('No Stripe publishable key available')
           // Fall back to redirect_status
-          setPaymentStatus(redirectStatus === 'succeeded' ? 'succeeded' : redirectStatus === 'failed' ? 'failed' : 'pending')
+          setPaymentStatus(
+            redirectStatus === 'succeeded'
+              ? 'succeeded'
+              : redirectStatus === 'failed'
+                ? 'failed'
+                : 'pending',
+          )
           return
         }
 
         const stripe = await loadStripe(publishableKey)
         if (!stripe) {
           console.error('Failed to load Stripe')
-          setPaymentStatus(redirectStatus === 'succeeded' ? 'succeeded' : redirectStatus === 'failed' ? 'failed' : 'pending')
+          setPaymentStatus(
+            redirectStatus === 'succeeded'
+              ? 'succeeded'
+              : redirectStatus === 'failed'
+                ? 'failed'
+                : 'pending',
+          )
           return
         }
 
         // Retrieve the actual PaymentIntent status
-        const { paymentIntent, error } = await stripe.retrievePaymentIntent(paymentIntentClientSecret)
+        const { paymentIntent, error } =
+          await stripe.retrievePaymentIntent(paymentIntentClientSecret)
 
         if (error) {
           console.error('Error retrieving PaymentIntent:', error)
@@ -303,7 +305,7 @@ export function CheckoutClient() {
         }
       }
     }
-  }, [redirectStatus, orderId])
+  }, [redirectStatus, orderId, paymentStatus])
 
   // Handle provider redirect with countdown
   useEffect(() => {
@@ -580,6 +582,42 @@ export function CheckoutClient() {
           </div>
           <p className="text-gray-600 font-medium">Preparing your checkout...</p>
         </div>
+      </div>
+    )
+  }
+
+  // Show disputed status
+  if (paymentStatus === 'disputed') {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <Card
+          className="w-full max-w-md text-center p-8 border border-gray-200 shadow-lg"
+          padding="lg"
+        >
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 mb-6">
+            <Icon name="alert-circle" className="h-8 w-8 text-orange-600" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-3">Payment Disputed</h1>
+          <p className="text-gray-600 mb-6 text-sm">
+            This payment created for Order{' '}
+            <span className="font-mono font-semibold">{displayOrderId}</span> is currently under
+            dispute. Please check your email or contact support for resolution.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/support"
+              className="block w-full py-3 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors text-center"
+            >
+              Contact Support
+            </Link>
+            <Link
+              href="/services"
+              className="block w-full py-3 px-4 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-center"
+            >
+              Browse Services
+            </Link>
+          </div>
+        </Card>
       </div>
     )
   }

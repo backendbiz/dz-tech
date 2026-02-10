@@ -6,8 +6,7 @@
       "description": "Professional website design service including responsive layouts, UI/UX design, and brand integration.",
       "price": 2500,
       "currency": "USD",
-      "priceUnit": "project",
-      "stripePaymentLink": "https://buy.stripe.com/your-payment-link-1"
+      "priceUnit": "project"
     },
     {
       "id": "seo-optimization",
@@ -15,8 +14,7 @@
       "description": "Complete SEO audit and optimization including keyword research, on-page SEO, and technical SEO improvements.",
       "price": 1500,
       "currency": "USD",
-      "priceUnit": "project",
-      "stripePaymentLink": "https://buy.stripe.com/your-payment-link-2"
+      "priceUnit": "project"
     },
     {
       "id": "digital-marketing",
@@ -24,8 +22,7 @@
       "description": "Full-service digital marketing campaign including social media, PPC, and content marketing.",
       "price": 3000,
       "currency": "USD",
-      "priceUnit": "month",
-      "stripePaymentLink": "https://buy.stripe.com/your-payment-link-3"
+      "priceUnit": "month"
     },
     {
       "id": "consulting-session",
@@ -33,13 +30,11 @@
       "description": "One-hour strategic business consulting session with our expert advisors.",
       "price": 250,
       "currency": "USD",
-      "priceUnit": "hour",
-      "stripePaymentLink": "https://buy.stripe.com/your-payment-link-4"
+      "priceUnit": "hour"
     }
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastUpdated": "2026-01-28",
-    "notes": "Replace stripePaymentLink values with actual Stripe Payment Link URLs from your Stripe Dashboard"
+    "lastUpdated": "2026-02-10"
   }
 }
