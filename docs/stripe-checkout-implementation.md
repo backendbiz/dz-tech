@@ -56,9 +56,11 @@ Cash App Payment → Same Page (Success/Failed UI)
    - Returns to same checkout page after payment
 
 7. **Create Payment Intent API** (`src/app/api/create-payment-intent/route.ts`)
-   - Creates Stripe PaymentIntent
+   - Creates Stripe PaymentIntent via the gateway abstraction layer
    - Creates pending Order in database with a `checkoutToken`
    - Supports both `serviceId` (direct) and `apiKey` (provider) flows
+   - Extracts provider credentials when provider uses own gateway account
+   - Supports per-request gateway selection via `gateway` field
    - Returns secure `checkoutUrl` with token
 
 8. **Checkout Session API** (`src/app/api/checkout-session/[token]/route.ts`)
@@ -289,7 +291,13 @@ src/
 │   ├── checkout-token.ts              # Checkout token generation & validation
 │   ├── order-generator.ts             # Order ID utilities
 │   ├── encryption.ts                  # AES-256-GCM encryption for keys
-│   ├── stripe.ts                      # Stripe utilities
+│   ├── payment-gateway.ts             # Gateway abstraction (Stripe, Square, PayPal, Crypto)
+│   │                                  #   GatewayCredentials type
+│   │                                  #   StripeGateway — uses provider creds when available
+│   │                                  #   getProviderGateway() — gateway router
+│   ├── stripe.ts                      # Stripe SDK instances & utilities
+│   │                                  #   getStripe() — platform default
+│   │                                  #   getStripeForService(key) — per-provider
 │   ├── api-key.ts                     # Provider API key utilities
 │   └── payload.ts                     # Payload client
 └── stripe/
@@ -318,6 +326,7 @@ src/
 4. **Checkout Tokens**: Cryptographically secure, unguessable 128-bit tokens
 5. **Token Validation**: Format validated before database lookup (fast fail)
 6. **HTTPS**: Required for all production endpoints
+7. **Provider Credentials**: Encrypted at rest with AES-256-GCM
 
 ## Troubleshooting
 

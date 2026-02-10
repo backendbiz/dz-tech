@@ -9,6 +9,8 @@ import type { Service, Provider } from '@/payload-types'
  *
  * Resolves a checkout token to the full checkout session data.
  * This is the secure replacement for exposing serviceId + orderId in the URL.
+ *
+ * Supports both service-based and provider-initiated (service-less) orders.
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -36,11 +38,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     }
 
     const order = orders.docs[0]
-    const service = order.service as Service
 
-    if (!service || typeof service === 'string') {
-      return NextResponse.json({ error: 'Service configuration error' }, { status: 500 })
-    }
+    // Service is optional — get it if it exists
+    const service = order.service as Service | null
+    const hasService = service && typeof service !== 'string'
 
     // Get provider info
     const provider = order.provider as Provider | null
@@ -73,6 +74,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       }
     }
 
+    // Build display name — use service title if available, otherwise order's itemName
+    const displayName = hasService
+      ? service.title
+      : (order as typeof order & { itemName?: string }).itemName || 'Payment'
+
+    const displayDescription = hasService
+      ? service.description || ''
+      : (order as typeof order & { itemDescription?: string }).itemDescription || ''
+
     return NextResponse.json({
       clientSecret,
       orderId: order.id,
@@ -80,19 +90,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       status: effectiveStatus,
       amount: order.total,
       quantity: order.quantity || 1,
-      serviceName: service.title,
-      serviceId: service.id,
+      // Display info — works for both service-based and provider orders
+      serviceName: displayName,
+      serviceId: hasService ? service.id : undefined,
       stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-      // Service data for the UI
-      service: {
-        id: service.id,
-        title: service.title,
-        description: service.description || '',
-        price: order.total,
-        slug: service.slug,
-        icon: service.icon || undefined,
-        priceUnit: service.priceUnit || undefined,
-      },
+      // Service data for the UI (null for provider-initiated orders without a service)
+      service: hasService
+        ? {
+            id: service.id,
+            title: service.title,
+            description: service.description || '',
+            price: order.total,
+            slug: service.slug,
+            icon: service.icon || undefined,
+            priceUnit: service.priceUnit || undefined,
+          }
+        : null,
+      // Item info for provider-initiated orders
+      item: !hasService
+        ? {
+            name: displayName,
+            description: displayDescription,
+            price: order.total,
+          }
+        : undefined,
       // Provider info
       ...(providerName && { provider: providerName }),
       ...(successRedirectUrl && { successRedirectUrl }),

@@ -19,7 +19,8 @@ async function notifyProvider(
   let attempt = 0
   let success = false
 
-  const service = order.service as Service
+  const service = order.service as Service | null
+  const hasService = service && typeof service !== 'string'
   const webhookPayload = {
     event,
     // Use Payload's auto-generated id
@@ -28,11 +29,15 @@ async function notifyProvider(
     externalId: order.externalId || null,
     providerId: provider.id,
     providerName: provider.name,
-    serviceId: service?.id || order.service,
-    serviceName: service?.title || 'Unknown Service',
+    // Service info (optional — provider orders may not have a service)
+    ...(hasService && { serviceId: service.id, serviceName: service.title }),
+    // Item info (for provider orders without a service)
+    ...(order.itemName && { itemName: order.itemName }),
     amount: order.total,
     status: order.status,
     stripePaymentIntentId: order.stripePaymentIntentId,
+    gatewayPaymentId: order.gatewayPaymentId || order.stripePaymentIntentId,
+    paymentGateway: order.paymentGateway || 'stripe',
     timestamp: new Date().toISOString(),
   }
 
@@ -121,18 +126,25 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
       console.log(`Order ${existingOrder.id} marked as paid via PaymentIntent`)
 
       order = { ...existingOrder, status: 'paid' }
-    } else if (serviceId) {
-      // Create new order if it doesn't exist
+    } else {
+      // Create new order if it doesn't exist (fallback)
+      const orderData: Record<string, unknown> = {
+        status: 'paid',
+        total: paymentIntent.amount / 100,
+        stripePaymentIntentId: paymentIntent.id,
+        gatewayPaymentId: paymentIntent.id,
+        paymentGateway: 'stripe',
+        ...(providerId && { provider: providerId }),
+        ...(externalId && { externalId }),
+      }
+      // Service is optional — only add if present
+      if (serviceId) {
+        orderData.service = serviceId
+      }
+
       const newOrder = await payload.create({
         collection: 'orders',
-        data: {
-          service: serviceId,
-          status: 'paid',
-          total: paymentIntent.amount / 100,
-          stripePaymentIntentId: paymentIntent.id,
-          ...(providerId && { provider: providerId }),
-          ...(externalId && { externalId }),
-        },
+        data: orderData as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       })
       console.log(`Order ${newOrder.id} created for PaymentIntent ${paymentIntent.id}`)
 

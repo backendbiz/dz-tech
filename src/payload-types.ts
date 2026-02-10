@@ -639,15 +639,34 @@ export interface Order {
    * External provider that initiated this order (if applicable)
    */
   provider?: (string | null) | Provider;
-  service: string | Service;
+  /**
+   * Linked service (optional for provider-initiated orders)
+   */
+  service?: (string | null) | Service;
+  /**
+   * Name/title of the item being purchased (used when no service is linked)
+   */
+  itemName?: string | null;
+  /**
+   * Description of the item (used when no service is linked)
+   */
+  itemDescription?: string | null;
   status: 'pending' | 'paid' | 'failed' | 'refunded' | 'disputed';
   total: number;
   /**
-   * Number of units purchased (Total / Service Price)
+   * Number of units purchased
    */
   quantity?: number | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
+  /**
+   * Payment ID from the payment gateway (e.g., Stripe PaymentIntent ID)
+   */
+  gatewayPaymentId?: string | null;
+  /**
+   * Which payment gateway processed this order (e.g., stripe, square)
+   */
+  paymentGateway?: string | null;
   customerEmail?: string | null;
   disputeId?: string | null;
   disputeStatus?:
@@ -670,7 +689,7 @@ export interface Order {
   createdAt: string;
 }
 /**
- * External providers that use dztech.shop as their payment gateway
+ * External platforms that use DZTech as their payment gateway
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "providers".
@@ -678,7 +697,7 @@ export interface Order {
 export interface Provider {
   id: string;
   /**
-   * Name of the external provider (e.g., Bitloader)
+   * Name of the external platform (e.g., Bitloader, GBPay, PlayPlay)
    */
   name: string;
   /**
@@ -690,9 +709,64 @@ export interface Provider {
    */
   apiKey: string;
   /**
-   * The service whose Stripe configuration will be used for payments
+   * Optional: Legacy field. Providers now send amount + description directly. Only use if you want to associate a default service.
    */
-  service: string | Service;
+  service?: (string | null) | Service;
+  /**
+   * Which payment gateway to use for this provider. "Platform Default" uses the global PAYMENT_GATEWAY setting.
+   */
+  paymentGateway?: ('default' | 'stripe' | 'square' | 'paypal' | 'crypto') | null;
+  /**
+   * Enable this to use provider's own payment gateway account (e.g., their own Stripe keys). When disabled, payments go through the platform's default account.
+   */
+  useOwnGatewayCredentials?: boolean | null;
+  /**
+   * Provider's own payment gateway credentials. All secret keys are encrypted at rest with AES-256-GCM.
+   */
+  gatewayCredentials?: {
+    /**
+     * Provider's Stripe secret key (sk_live_... or sk_test_...). Encrypted at rest.
+     */
+    stripeSecretKey?: string | null;
+    /**
+     * Provider's Stripe publishable key (pk_live_... or pk_test_...). Sent to the frontend.
+     */
+    stripePublishableKey?: string | null;
+    /**
+     * Provider's Stripe webhook endpoint secret (whsec_...). Encrypted at rest.
+     */
+    stripeWebhookSecret?: string | null;
+    /**
+     * Auto-detected from the publishable key.
+     */
+    stripeKeyMode?: ('test' | 'live' | 'unknown') | null;
+    /**
+     * Provider's Square access token. Encrypted at rest.
+     */
+    squareAccessToken?: string | null;
+    /**
+     * Provider's Square location ID.
+     */
+    squareLocationId?: string | null;
+    /**
+     * Provider's Square application ID. Sent to the frontend.
+     */
+    squareApplicationId?: string | null;
+    squareEnvironment?: ('sandbox' | 'production') | null;
+    /**
+     * Provider's PayPal client ID.
+     */
+    paypalClientId?: string | null;
+    /**
+     * Provider's PayPal client secret. Encrypted at rest.
+     */
+    paypalClientSecret?: string | null;
+    paypalEnvironment?: ('sandbox' | 'live') | null;
+    /**
+     * Provider's crypto payment gateway API key. Encrypted at rest.
+     */
+    cryptoGatewayApiKey?: string | null;
+  };
   /**
    * Only active providers can process payments
    */
@@ -1292,11 +1366,15 @@ export interface OrdersSelect<T extends boolean = true> {
   externalId?: T;
   provider?: T;
   service?: T;
+  itemName?: T;
+  itemDescription?: T;
   status?: T;
   total?: T;
   quantity?: T;
   stripeSessionId?: T;
   stripePaymentIntentId?: T;
+  gatewayPaymentId?: T;
+  paymentGateway?: T;
   customerEmail?: T;
   disputeId?: T;
   disputeStatus?: T;
@@ -1347,6 +1425,24 @@ export interface ProvidersSelect<T extends boolean = true> {
   slug?: T;
   apiKey?: T;
   service?: T;
+  paymentGateway?: T;
+  useOwnGatewayCredentials?: T;
+  gatewayCredentials?:
+    | T
+    | {
+        stripeSecretKey?: T;
+        stripePublishableKey?: T;
+        stripeWebhookSecret?: T;
+        stripeKeyMode?: T;
+        squareAccessToken?: T;
+        squareLocationId?: T;
+        squareApplicationId?: T;
+        squareEnvironment?: T;
+        paypalClientId?: T;
+        paypalClientSecret?: T;
+        paypalEnvironment?: T;
+        cryptoGatewayApiKey?: T;
+      };
   status?: T;
   webhookUrl?: T;
   successRedirectUrl?: T;

@@ -1,53 +1,66 @@
 # Provider Integration Guide
 
-This document explains how external providers can integrate with DZTech to process payments through our unified checkout system.
+This document explains how external platforms can integrate with DZTech as their payment gateway. Providers are **independent of specific services** — they send payment details directly and receive a secure checkout page.
 
 ## Architecture Overview
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                                                                              │
-│   Provider A                               Provider B                        │
-│   API Key: provider_xxx...                 API Key: provider_yyy...          │
-│        │                                        │                            │
-│        ▼                                        ▼                            │
+│   Bitloader                          GBPay                PlayPlay           │
+│   API Key: provider_xxx...           API Key: provider_yyy...               │
+│   Gateway: Platform Default          Gateway: Stripe                        │
+│   Credentials: ❌ (uses platform)   Credentials: ✅ (own Stripe account)  │
+│        │                                  │              │                  │
+│        ▼                                  ▼              ▼                  │
 │   ┌────────────────────────────────────────────────────────────────────┐    │
 │   │              dztech.shop/api/create-payment-intent                  │    │
+│   │              { apiKey, amount, itemName, gateway? }                 │    │
 │   └────────────────────────────────────────────────────────────────────┘    │
-│        │                                        │                            │
-│        ▼                                        ▼                            │
-│   ┌─────────────────────┐              ┌─────────────────────┐              │
-│   │ Service A           │              │ Service B           │              │
-│   │ $5/unit             │              │ $300/project        │              │
-│   └─────────────────────┘              └─────────────────────┘              │
-│        │                                        │                            │
-│        ▼                                        ▼                            │
-│   ┌──────────────────────────────────────────────────────────┐              │
-│   │           DZTech Stripe Account (Cash App Pay)           │              │
-│   └──────────────────────────────────────────────────────────┘              │
+│                              │                                               │
+│                              ▼                                               │
+│   ┌────────────────────────────────────────────────────────────────────┐    │
+│   │                   Payment Gateway Router                            │    │
+│   │  Priority: body.gateway → provider.paymentGateway → env default    │    │
+│   │                                                                      │    │
+│   │  ┌──────────┐  ┌──────────┐  ┌──────┐  ┌───────┐                  │    │
+│   │  │  Stripe  │  │  PayPal  │  │Square│  │Crypto │                  │    │
+│   │  │    ✅    │  │    🔜    │  │  🔜  │  │  🔜   │                  │    │
+│   │  └──────────┘  └──────────┘  └──────┘  └───────┘                  │    │
+│   └────────────────────────────────────────────────────────────────────┘    │
+│                              │                                               │
+│                              ▼                                               │
+│                    ┌─────────────────────┐                                   │
+│                    │  Checkout Page      │                                   │
+│                    │  /checkout/o/{token}│                                   │
+│                    └─────────────────────┘                                   │
+│                              │                                               │
+│                              ▼                                               │
+│                    ┌─────────────────────┐                                   │
+│                    │  Order (standalone) │  ← No service required            │
+│                    └─────────────────────┘                                   │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Each provider:
+### Key Design Principles
 
-- Has their **own API key** for authentication
-- Links to a specific **Service** (product/pricing)
-- Can specify custom **amount** (quantity-based pricing)
-- Receives **webhook notifications** when payments complete
-- Has **custom redirect URLs** for their users after payment
+- **No Service Required**: Providers don't need to link to a DZTech service. They send amount + description directly.
+- **Multi-Gateway Support**: Providers can choose which payment gateway to use per-request or via admin config.
+- **Per-Provider Credentials**: Providers can use their own payment gateway accounts (e.g., their own Stripe keys). Money goes directly to their account.
+- **Gateway Priority**: `request body.gateway` → `provider.paymentGateway` (admin) → `PAYMENT_GATEWAY` (env default)
+- **Standalone Orders**: Orders created by providers exist independently — they store `itemName` and `itemDescription` instead of a service reference.
 
 ---
 
-## Integration Flows
-
-### Flow 1: API-Based Integration (Recommended for Providers)
+## Integration Flow
 
 ```
 Provider Backend                DZTech                      User
       │                            │                          │
       │  POST /api/create-payment-intent                      │
-      │  { apiKey, externalId, amount }                       │
+      │  { apiKey, amount, itemName,                          │
+      │    externalId, gateway? }                              │
       │ ──────────────────────────►│                          │
       │                            │                          │
       │  { checkoutUrl, orderId }  │                          │
@@ -56,6 +69,8 @@ Provider Backend                DZTech                      User
       │  Redirect user ───────────────────────────────────────►│
       │                            │                          │
       │                            │  /checkout/o/{token}     │
+      │                            │  Shows: amount +         │
+      │                            │  item name + Cash App    │
       │                            │ ◄─────────────────────────│
       │                            │                          │
       │                            │  Cash App Payment        │
@@ -71,54 +86,42 @@ Provider Backend                DZTech                      User
       │ ◄──────────────────────────│                          │
 ```
 
-### Flow 2: Direct Service Checkout (Buy Button)
-
-```
-User clicks "Buy Now" on DZTech Service Page
-      │
-      ▼
-POST /api/create-payment-intent { serviceId }
-      │
-      ▼
-Redirect to /checkout/o/{checkoutToken}
-      │
-      ▼
-User pays via Cash App → Same Page (Success/Failed UI)
-```
-
 ---
 
 ## Setting Up a Provider
 
-### Step 1: Create a Service
-
-1. Go to **Admin Panel** → **Services**
-2. Create a new service with:
-   - **Title**: Product name (e.g., "Premium Credits")
-   - **Price**: Unit price (e.g., $5)
-   - **Slug**: URL-friendly identifier
-
-3. **Save** the service
-
-### Step 2: Create the Provider
+### In the Admin Panel
 
 1. Go to **Admin Panel** → **Providers**
 2. Click **Create New Provider**
 3. Fill in:
 
-| Field                    | Example                                           | Description                         |
-| ------------------------ | ------------------------------------------------- | ----------------------------------- |
-| **Provider Name**        | Bitloader                                         | Display name                        |
-| **Provider Slug**        | `bitloader`                                       | URL-friendly identifier             |
-| **Linked Service**       | Premium Credits                                   | Service this provider sells         |
-| **Status**               | 🟢 Active                                         | Enable/disable the provider         |
-| **Webhook URL**          | `https://bitloader.com/api/webhooks/dztech`       | Where to send payment notifications |
-| **Success Redirect URL** | `https://bitloader.com/success?orderId={orderId}` | Redirect after successful payment   |
-| **Cancel Redirect URL**  | `https://bitloader.com/cancelled`                 | Redirect after cancelled payment    |
+| Field                           | Example                                       | Required | Description                                   |
+| ------------------------------- | --------------------------------------------- | -------- | --------------------------------------------- |
+| **Provider Name**               | GBPay                                         | ✅       | Display name                                  |
+| **Provider Slug**               | `gbpay`                                       | ✅       | URL-friendly identifier                       |
+| **Status**                      | 🟢 Active                                     | ✅       | Enable/disable                                |
+| **Payment Gateway**             | 💳 Stripe                                     | No       | Override platform default                     |
+| **Use Own Gateway Credentials** | ✅                                            | No       | Use provider's own Stripe/PayPal/etc. account |
+| **Webhook URL**                 | `https://gbpay.com/api/webhooks/dztech`       | No       | Payment notifications                         |
+| **Success Redirect URL**        | `https://gbpay.com/success?orderId={orderId}` | No       | Redirect after payment                        |
+| **Cancel Redirect URL**         | `https://gbpay.com/cancelled`                 | No       | Redirect on cancel                            |
 
-4. **Save** → Copy the auto-generated **API Key**
+4. **If using own credentials**, fill in the Gateway Credentials section (fields shown depend on selected gateway):
 
-> **Note**: Use `{orderId}` as a placeholder in redirect URLs - it will be replaced with the actual order ID.
+| Field                      | Example          | Gateway | Description                               |
+| -------------------------- | ---------------- | ------- | ----------------------------------------- |
+| **Stripe Secret Key**      | `sk_live_xxx...` | Stripe  | Provider's secret key (encrypted at rest) |
+| **Stripe Publishable Key** | `pk_live_xxx...` | Stripe  | Provider's publishable key                |
+| **Stripe Webhook Secret**  | `whsec_xxx...`   | Stripe  | Provider's webhook secret (encrypted)     |
+| **Square Access Token**    | `EAAAEdN...`     | Square  | Provider's Square token (encrypted)       |
+| **Square Location ID**     | `LXXX...`        | Square  | Square location                           |
+| **PayPal Client ID**       | `AcXXX...`       | PayPal  | PayPal client ID                          |
+| **PayPal Client Secret**   | `ECXXX...`       | PayPal  | PayPal secret (encrypted)                 |
+
+5. **Save** → Copy the auto-generated **API Key**
+
+> **Note**: Service linking is **optional** and only needed for backwards compatibility. New providers should **not** link to a service.
 
 ---
 
@@ -126,35 +129,29 @@ User pays via Cash App → Same Page (Success/Failed UI)
 
 ### POST /api/create-payment-intent
 
-Creates a payment session and returns a secure checkout URL.
+Creates a payment and returns a secure checkout URL.
 
 **Request Body**:
 
 ```json
 {
   "apiKey": "provider_xxxxxxxxxxxxxxxxxxxx",
+  "amount": 100,
+  "itemName": "Premium Credits",
+  "itemDescription": "100 premium credits for your account",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
-  "amount": 100
+  "gateway": "stripe"
 }
 ```
 
-| Field        | Required    | Description                                       |
-| ------------ | ----------- | ------------------------------------------------- |
-| `apiKey`     | Yes         | Your provider API key                             |
-| `externalId` | Recommended | Your internal order/transaction ID for tracking   |
-| `amount`     | No          | Custom amount (must be multiple of service price) |
-
-**Amount & Quantity Logic**:
-
-- If `amount` is provided:
-  - Must be **≥ service price**
-  - Must be **divisible by service price**
-  - **Quantity** = `amount / servicePrice`
-  - Example: Service Price = $5, Amount = $100 → Quantity = 20
-
-- If `amount` is NOT provided:
-  - Uses default **service price**
-  - **Quantity** = 1
+| Field             | Required    | Description                                                                            |
+| ----------------- | ----------- | -------------------------------------------------------------------------------------- |
+| `apiKey`          | Yes         | Your provider API key                                                                  |
+| `amount`          | Yes         | Payment amount in dollars                                                              |
+| `itemName`        | No          | Name shown on checkout page (defaults to provider name)                                |
+| `itemDescription` | No          | Description shown on checkout page                                                     |
+| `externalId`      | Recommended | Your internal order/transaction ID for tracking                                        |
+| `gateway`         | No          | Override the gateway for this request. Options: `stripe`, `square`, `paypal`, `crypto` |
 
 **Success Response** (200):
 
@@ -167,41 +164,122 @@ Creates a payment session and returns a secure checkout URL.
 }
 ```
 
-> **Note**: The `checkoutUrl` uses a secure, unguessable checkout token. Redirect your users to this URL to complete payment.
+> **Note**: Redirect your users to `checkoutUrl` to complete payment.
 
 **Error Responses**:
 
-| Status | Error                                    | Description                       |
-| ------ | ---------------------------------------- | --------------------------------- |
-| 401    | Invalid or inactive API key              | Check API key and provider status |
-| 400    | Amount must be a multiple of 5           | Amount validation failed          |
-| 400    | Amount cannot be less than service price | Minimum amount not met            |
-| 400    | Cash App payments are not available      | Stripe account issue              |
-| 500    | Server error                             | Contact support                   |
+| Status | Error                                            | Description                                     |
+| ------ | ------------------------------------------------ | ----------------------------------------------- |
+| 401    | Invalid or inactive API key                      | Check API key and provider status               |
+| 400    | Amount is required                               | Must provide an amount                          |
+| 400    | Invalid amount provided                          | Amount must be a positive number                |
+| 400    | Invalid gateway: "venmo". Available: stripe, ... | The `gateway` value is not a registered gateway |
+| 400    | Cash App payments not available                  | Stripe account issue                            |
+| 500    | Server error                                     | Contact support                                 |
 
 ---
 
-## Checkout Flow
+## Per-Request Gateway Selection
+
+A single provider can use **multiple gateways** by passing the `gateway` field per request:
+
+```javascript
+// User picks Cash App → route through Stripe
+await fetch('/api/create-payment-intent', {
+  method: 'POST',
+  body: JSON.stringify({
+    apiKey: DZTECH_API_KEY,
+    amount: 25,
+    itemName: '100 Credits',
+    gateway: 'stripe', // ← Cash App via Stripe
+  }),
+})
+
+// User picks PayPal → route through PayPal
+await fetch('/api/create-payment-intent', {
+  method: 'POST',
+  body: JSON.stringify({
+    apiKey: DZTECH_API_KEY,
+    amount: 25,
+    itemName: '100 Credits',
+    gateway: 'paypal', // ← PayPal (when implemented)
+  }),
+})
+
+// No gateway specified → uses provider's admin default → platform default
+await fetch('/api/create-payment-intent', {
+  method: 'POST',
+  body: JSON.stringify({
+    apiKey: DZTECH_API_KEY,
+    amount: 25,
+    itemName: '100 Credits',
+    // gateway omitted → uses default
+  }),
+})
+```
+
+### Gateway Priority
+
+```
+body.gateway  →  provider.paymentGateway (admin)  →  PAYMENT_GATEWAY (env)
+  (per-request)       (per-provider)                    (global default)
+```
+
+---
+
+## Per-Provider Credentials
+
+Providers can use **their own Stripe account** (or Square, PayPal, etc.) so payments land directly in their account.
+
+### How It Works
+
+```
+Without own credentials (default):
+  GBPay  ─── $100 ───► Platform's Stripe (sk_live_PLATFORM) ─► Platform gets $100
+
+With own credentials:
+  GBPay  ─── $100 ───► GBPay's Stripe (sk_live_GBPAY)  ─► GBPay gets $100 directly
+```
+
+### Setting Up
+
+1. In the admin panel, enable **"Use Own Gateway Credentials"** on the provider
+2. Enter the provider's Stripe keys (secret key, publishable key, webhook secret)
+3. All keys are **encrypted at rest** with AES-256-GCM
+4. The key mode (test/live) is auto-detected from the publishable key
+
+### Security
+
+| Aspect               | Detail                                                    |
+| -------------------- | --------------------------------------------------------- |
+| **Encryption**       | AES-256-GCM with random IV per encryption                 |
+| **Key Derivation**   | SHA-256 of `STRIPE_ENCRYPTION_KEY` or `PAYLOAD_SECRET`    |
+| **Secret Keys**      | Encrypted before saving to database                       |
+| **Publishable Keys** | Stored in plain text (they're meant to be public)         |
+| **Decryption**       | Automatic via `afterRead` hook — available in-memory only |
+| **Admin Display**    | Masked display (`sk_live...1234`)                         |
+
+---
+
+## Checkout Page
 
 ### What Users See
 
-1. **Checkout Page** (`/checkout/o/{checkoutToken}`)
-   - Service details displayed
-   - Amount to pay
-   - Cash App payment button
+When a user opens the checkout URL, they see:
 
-2. **Cash App Opens** (in new tab/window)
-   - User approves payment in Cash App
+1. **Item Name** (if provided) — e.g., "Premium Credits"
+2. **Item Description** (if provided)
+3. **Order ID** — for reference
+4. **Total Amount** — e.g., "USD 100.00"
+5. **Cash App Pay Button** — to complete payment
 
-3. **Returns to Checkout Page**
-   - **Success**: Green success UI with order confirmation
-   - **Failed**: Red error UI with "Try Again" button
-   - **Processing**: Blue processing UI
+After payment:
 
-4. **Provider Redirect** (if configured)
-   - 5-second countdown shown
-   - Auto-redirects to provider's `successRedirectUrl`
-   - User can click to redirect immediately
+- **Success**: Green confirmation with order reference + provider redirect (5s countdown)
+- **Failed**: Red error with "Try Again" button
+- **Processing**: Blue processing message
+
+> **Note**: The checkout page does NOT show service details or a "Back to Service" link for provider-initiated orders.
 
 ---
 
@@ -221,13 +299,14 @@ X-DZTech-Webhook: payment-notification
   "orderId": "65b...",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
   "providerId": "xyz789",
-  "providerName": "Bitloader",
-  "serviceId": "abc123",
-  "serviceName": "Premium Credits",
+  "providerName": "GBPay",
+  "itemName": "Premium Credits",
   "amount": 100,
   "status": "paid",
   "stripePaymentIntentId": "pi_xxx",
-  "timestamp": "2026-01-30T10:00:00.000Z"
+  "gatewayPaymentId": "pi_xxx",
+  "paymentGateway": "stripe",
+  "timestamp": "2026-02-10T10:00:00.000Z"
 }
 ```
 
@@ -239,19 +318,37 @@ X-DZTech-Webhook: payment-notification
   "orderId": "65b...",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
   "providerId": "xyz789",
-  "providerName": "Bitloader",
-  "serviceId": "abc123",
-  "serviceName": "Premium Credits",
+  "providerName": "GBPay",
+  "itemName": "Premium Credits",
   "amount": 100,
   "status": "failed",
   "stripePaymentIntentId": "pi_xxx",
-  "timestamp": "2026-01-30T10:00:00.000Z"
+  "gatewayPaymentId": "pi_xxx",
+  "paymentGateway": "stripe",
+  "timestamp": "2026-02-10T10:00:00.000Z"
 }
 ```
 
-> **Important**: Use the `externalId` field to match webhook notifications with your internal orders.
+### Webhook Fields
 
-### Webhook Retry Logic
+| Field                   | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| `event`                 | `payment_succeeded` or `payment_failed`       |
+| `orderId`               | DZTech internal order ID                      |
+| `externalId`            | Your internal ID (if provided)                |
+| `providerId`            | Your provider ID                              |
+| `providerName`          | Your provider name                            |
+| `itemName`              | Item name from the payment request            |
+| `amount`                | Payment amount in dollars                     |
+| `status`                | Order status (`paid`, `failed`)               |
+| `stripePaymentIntentId` | Stripe-specific payment ID                    |
+| `gatewayPaymentId`      | Gateway-agnostic payment ID                   |
+| `paymentGateway`        | Which gateway processed this (`stripe`, etc.) |
+| `timestamp`             | Event timestamp (ISO 8601)                    |
+
+> **Note**: `gatewayPaymentId` and `paymentGateway` are gateway-agnostic fields. When Square is added, `gatewayPaymentId` will contain the Square payment ID.
+
+### Retry Logic
 
 DZTech uses **exponential backoff** for webhook delivery:
 
@@ -263,8 +360,6 @@ DZTech uses **exponential backoff** for webhook delivery:
 | 4       | 4 seconds |
 | 5       | 8 seconds |
 
-If all 5 attempts fail, the webhook is logged for manual replay.
-
 ---
 
 ## Complete Integration Example
@@ -272,24 +367,21 @@ If all 5 attempts fail, the webhook is logged for manual replay.
 ### Provider Backend (Node.js)
 
 ```javascript
-// provider-backend/services/payment.js
-
 const DZTECH_API_KEY = process.env.DZTECH_API_KEY
 
-async function createPaymentSession(userId, quantity) {
-  // Generate a unique external ID for tracking
+async function createPaymentSession(userId, amount, itemName, gateway) {
   const externalId = `ORDER-${userId}-${Date.now()}`
-
-  // Calculate amount (e.g., $5 per unit)
-  const amount = quantity * 5
 
   const response = await fetch('https://dztech.shop/api/create-payment-intent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey: DZTECH_API_KEY,
-      externalId,
       amount,
+      itemName,
+      externalId,
+      // Optional: specify a gateway per transaction
+      ...(gateway && { gateway }),
     }),
   })
 
@@ -300,47 +392,18 @@ async function createPaymentSession(userId, quantity) {
 
   const data = await response.json()
 
-  // Store order in your database
+  // Store in your database
   await db.orders.create({
     id: externalId,
     userId,
-    quantity,
     amount: data.amount,
     dztechOrderId: data.orderId,
     status: 'pending',
-    createdAt: new Date(),
   })
 
   return {
     checkoutUrl: data.checkoutUrl,
     orderId: data.orderId,
-    externalId,
-  }
-}
-
-module.exports = { createPaymentSession }
-```
-
-### Provider Frontend
-
-```javascript
-// provider-frontend/components/BuyButton.jsx
-
-async function handleBuy(quantity) {
-  try {
-    const response = await fetch('/api/create-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity }),
-    })
-
-    const { checkoutUrl } = await response.json()
-
-    // Redirect to DZTech checkout (token-based URL)
-    window.location.href = checkoutUrl
-  } catch (error) {
-    console.error('Payment error:', error)
-    alert('Failed to start payment. Please try again.')
   }
 }
 ```
@@ -348,137 +411,239 @@ async function handleBuy(quantity) {
 ### Provider Webhook Handler
 
 ```javascript
-// provider-backend/routes/webhooks.js
-
 app.post('/api/webhooks/dztech', async (req, res) => {
-  // Verify webhook source
   if (req.headers['x-dztech-webhook'] !== 'payment-notification') {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const { event, externalId, amount, status } = req.body
+  const { event, externalId, amount } = req.body
 
-  console.log(`Received ${event} for order ${externalId}`)
-
-  // Find order using YOUR externalId
   const order = await db.orders.findById(externalId)
-
   if (!order) {
-    console.error(`Order not found: ${externalId}`)
     return res.status(200).json({ received: true })
   }
 
   if (event === 'payment_succeeded') {
-    await db.orders.update(order.id, {
-      status: 'paid',
-      paidAt: new Date(),
-    })
-
-    // Grant credits/access to user
-    await grantCredits(order.userId, order.quantity)
-
-    // Send confirmation
-    await sendConfirmationEmail(order.userId, { amount })
+    await db.orders.update(order.id, { status: 'paid' })
+    await grantAccess(order.userId, amount)
   } else if (event === 'payment_failed') {
     await db.orders.update(order.id, { status: 'failed' })
-    await sendFailureNotification(order.userId)
   }
 
-  // Always respond 200 to acknowledge receipt
   res.status(200).json({ received: true })
 })
 ```
 
-### Provider Success Page
+---
 
-```javascript
-// provider-frontend/pages/success.jsx
+## Payment Gateway Configuration
 
-export default function SuccessPage() {
-  const router = useRouter()
-  const { orderId } = router.query
+### Global Default
 
-  return (
-    <div>
-      <h1>Payment Successful!</h1>
-      <p>Order Reference: {orderId}</p>
-      <p>Your credits have been added to your account.</p>
-      <a href="/dashboard">Go to Dashboard</a>
-    </div>
-  )
+The platform-wide default gateway is set via environment variable:
+
+```bash
+# .env
+PAYMENT_GATEWAY=stripe  # Options: 'stripe' | 'square' | 'paypal' | 'crypto'
+```
+
+### Per-Provider Override (Admin Panel)
+
+Each provider can optionally override the default gateway in the admin panel:
+
+| Setting             | Behavior                                              |
+| ------------------- | ----------------------------------------------------- |
+| 🌐 Platform Default | Uses the global `PAYMENT_GATEWAY` env var setting     |
+| 💳 Stripe           | Forces Stripe (Cash App Pay) for this provider        |
+| 🟩 Square           | Forces Square for this provider (when implemented)    |
+| 🅿️ PayPal           | Forces PayPal for this provider (when implemented)    |
+| ₿ Cryptocurrency    | Forces crypto payments for this provider (when ready) |
+
+### Per-Request Override (API)
+
+Each API request can override the gateway for that specific transaction:
+
+```json
+{
+  "apiKey": "provider_xxx",
+  "amount": 25,
+  "gateway": "stripe"
 }
 ```
 
+### Three Levels of Control
+
+| Level                | Who sets it          | When to use                                                 |
+| -------------------- | -------------------- | ----------------------------------------------------------- |
+| **Platform default** | Platform admin (env) | `PAYMENT_GATEWAY=stripe` — all providers use Stripe         |
+| **Provider default** | Admin panel          | GBPay always uses PayPal — set in admin sidebar             |
+| **Per-request**      | Provider's code      | `gateway: "stripe"` — this specific transaction uses Stripe |
+
+### Registered Gateways
+
+| Gateway    | Status         | Payment Methods                       | Required Env Vars (Platform-level)                                               |
+| ---------- | -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| **Stripe** | ✅ Active      | Cash App Pay                          | `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`                        |
+| **Square** | 🔜 Placeholder | Card, Apple Pay, Google Pay, Cash App | `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `NEXT_PUBLIC_SQUARE_APPLICATION_ID` |
+| **PayPal** | 🔜 Placeholder | PayPal, Venmo, Card, Pay Later        | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `NEXT_PUBLIC_PAYPAL_CLIENT_ID`       |
+| **Crypto** | 🔜 Placeholder | Bitcoin, Ethereum, USDC, USDT         | `CRYPTO_GATEWAY_API_KEY`, `NEXT_PUBLIC_CRYPTO_GATEWAY_KEY`                       |
+
+> **Note**: When a provider uses their **own credentials**, the platform-level env vars are not required for that provider. The provider's encrypted keys are used instead.
+
+### Gateway Status API
+
+Check available gateways at runtime:
+
+```http
+GET /api/payment-gateways
+```
+
+```json
+{
+  "defaultGateway": "stripe",
+  "gateways": [
+    {
+      "name": "stripe",
+      "displayName": "Stripe (Cash App Pay)",
+      "isActive": true,
+      "supportedMethods": ["cashapp"],
+      "isDefault": true
+    },
+    {
+      "name": "square",
+      "displayName": "Square",
+      "isActive": false,
+      "supportedMethods": ["card", "apple_pay", "google_pay", "cash_app"],
+      "isDefault": false
+    },
+    {
+      "name": "paypal",
+      "displayName": "PayPal",
+      "isActive": false,
+      "supportedMethods": ["paypal", "venmo", "card", "pay_later"],
+      "isDefault": false
+    },
+    {
+      "name": "crypto",
+      "displayName": "Cryptocurrency",
+      "isActive": false,
+      "supportedMethods": ["bitcoin", "ethereum", "usdc", "usdt"],
+      "isDefault": false
+    }
+  ]
+}
+```
+
+### Gateway Abstraction
+
+The system uses a `PaymentGateway` interface (`src/lib/payment-gateway.ts`) that all gateways implement:
+
+```typescript
+interface PaymentGateway {
+  name: GatewayName // 'stripe', 'square', 'paypal', 'crypto'
+  displayName: string // Human-readable name
+  isActive: boolean // Whether this gateway is implemented
+
+  createPayment(params) // Create a payment (accepts credentials)
+  retrievePayment(id) // Get payment status
+  cancelPayment(id) // Cancel a payment
+  refundPayment(params) // Refund a payment
+  getPublishableKey(creds?) // Frontend key (supports provider creds)
+  getInfo() // Gateway metadata
+  isConfigured() // Check env vars are set
+}
+```
+
+### Adding a New Gateway
+
+1. Create a class in `src/lib/payment-gateway.ts` implementing `PaymentGateway`
+2. Register it in the `gatewayRegistry` map
+3. Add the option to `Providers.paymentGateway` select field
+4. Add credential fields to `Providers.gatewayCredentials` group
+5. Set required env vars
+6. Set `isActive = true`
+7. No other code changes needed — the provider API and checkout flow work automatically
+
 ---
 
-## Tracking in Stripe Dashboard
+## Provider Credential Scenarios
 
-Payments made through DZTech include helpful metadata visible in Stripe:
+### Scenario 1: Bitloader (uses platform's Stripe)
 
-| Metadata Field | Description                   |
-| -------------- | ----------------------------- |
-| `serviceId`    | DZTech service ID             |
-| `providerId`   | Provider's ID (if applicable) |
-| `externalId`   | Provider's internal order ID  |
+```
+Admin Config:
+  Payment Gateway: 🌐 Platform Default
+  Use Own Credentials: ❌
 
-**Payment Description Format**:
+API Call:
+  { apiKey: "provider_bit...", amount: 50, itemName: "Credits" }
 
-- Direct: `ServiceName | Direct`
-- With Provider: `ServiceName | Direct (ProviderName)`
+Result:
+  Payment created on PLATFORM's Stripe account (sk_live_PLATFORM)
+  Money lands in platform's account
+```
+
+### Scenario 2: GBPay (uses their own Stripe)
+
+```
+Admin Config:
+  Payment Gateway: 💳 Stripe
+  Use Own Credentials: ✅
+  Stripe Secret Key: sk_live_GBPAY... (encrypted)
+  Stripe Publishable Key: pk_live_GBPAY...
+
+API Call:
+  { apiKey: "provider_gbp...", amount: 100, itemName: "Subscription" }
+
+Result:
+  Payment created on GBPAY's Stripe account (sk_live_GBPAY)
+  Money lands in GBPay's account directly
+```
+
+### Scenario 3: PlayPlay (uses own Stripe + per-request override)
+
+```
+Admin Config:
+  Payment Gateway: 💳 Stripe
+  Use Own Credentials: ✅
+  Stripe Secret Key: sk_live_PLAYPLAY... (encrypted)
+
+API Calls:
+  // Default → PlayPlay's Stripe
+  { apiKey: "provider_play...", amount: 25, itemName: "Tokens" }
+
+  // Override → PayPal (when implemented)
+  { apiKey: "provider_play...", amount: 25, itemName: "Tokens", gateway: "paypal" }
+```
 
 ---
 
 ## Security Considerations
 
 1. **API Key Protection**: Never expose your API key in frontend code
-2. **Webhook Verification**: Always check the `X-DZTech-Webhook` header
+2. **Webhook Verification**: Check the `X-DZTech-Webhook` header
 3. **HTTPS Only**: All API calls must be over HTTPS
 4. **Idempotency**: Handle duplicate webhook notifications gracefully
-5. **Order Verification**: Wait for webhook before granting access (don't trust client)
-6. **Checkout Tokens**: Checkout URLs use cryptographically secure 128-bit tokens, preventing URL guessing
-
----
-
-## Testing
-
-### Test with cURL
-
-```bash
-# Create payment session
-curl -X POST https://dztech.shop/api/create-payment-intent \
-  -H "Content-Type: application/json" \
-  -d '{
-    "apiKey": "YOUR_PROVIDER_API_KEY",
-    "externalId": "TEST-ORDER-001",
-    "amount": 25
-  }'
-```
-
-### Stripe Test Mode
-
-Use Stripe's test mode credentials. For Cash App testing:
-
-- Use `$test_cashtag` in the Cash App sandbox
-- All test payments will succeed
+5. **Checkout Tokens**: URLs use 128-bit cryptographically secure tokens
+6. **Order Verification**: Wait for webhook before granting access
+7. **Credential Encryption**: All provider secret keys are encrypted at rest with AES-256-GCM
+8. **Key Mode Detection**: Auto-detects test vs. live mode from publishable keys
 
 ---
 
 ## Troubleshooting
 
-| Issue                            | Solution                                        |
-| -------------------------------- | ----------------------------------------------- |
-| "Invalid or inactive API key"    | Check API key, verify provider status is Active |
-| "Amount must be a multiple of 5" | Ensure amount is divisible by service price     |
-| "Cash App not available"         | Requires US-based Stripe account                |
-| Webhook not received             | Check URL is publicly accessible, responds 200  |
-| User not redirected              | Verify `successRedirectUrl` has `{orderId}`     |
-| Duplicate webhooks               | Implement idempotency using `externalId`        |
-
----
-
-## Support
-
-For integration support, contact: support@dztech.shop
+| Issue                           | Solution                                                  |
+| ------------------------------- | --------------------------------------------------------- |
+| "Invalid or inactive API key"   | Check API key, verify provider status is Active           |
+| "Amount is required"            | Provider flow requires `amount` in the request            |
+| "Invalid gateway: ..."          | The `gateway` value is not registered — check spelling    |
+| "Cash App not available"        | Requires US-based Stripe account                          |
+| "Square/PayPal not implemented" | These gateways are placeholders — use Stripe              |
+| Webhook not received            | Check URL is publicly accessible, responds 200            |
+| Duplicate webhooks              | Implement idempotency using `externalId`                  |
+| Payment going to wrong account  | Check "Use Own Gateway Credentials" is enabled            |
+| Keys not encrypting             | Ensure `STRIPE_ENCRYPTION_KEY` or `PAYLOAD_SECRET` is set |
 
 ---
 

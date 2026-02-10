@@ -2,17 +2,20 @@
 
 > Complete guide for the custom Stripe payment integration in DZTech Consulting.
 
+> **Note:** Stripe is one of several payment gateways supported by the platform's [Payment Gateway Abstraction](../src/lib/payment-gateway.ts). See [Provider Integration](./provider-integration.md#payment-gateway-configuration) for the full multi-gateway overview.
+
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Configuration](#configuration)
-4. [Security Features](#security-features)
-5. [API Reference](#api-reference)
-6. [Webhook Handling](#webhook-handling)
-7. [Dispute Handling](#dispute-handling)
-8. [Frontend Components](#frontend-components)
-9. [Troubleshooting](#troubleshooting)
+4. [Per-Provider Credentials](#per-provider-credentials)
+5. [Security Features](#security-features)
+6. [API Reference](#api-reference)
+7. [Webhook Handling](#webhook-handling)
+8. [Dispute Handling](#dispute-handling)
+9. [Frontend Components](#frontend-components)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -26,6 +29,7 @@ This integration provides a **custom, branded checkout experience** using Stripe
 - ✅ Webhook handling for payment and dispute events
 - ✅ Provider integration with API keys and webhooks
 - ✅ Automatic order and payment intent management
+- ✅ **Per-provider Stripe accounts** — providers can use their own keys
 
 > ⚠️ **Important:** Cash App payments require a **US-based Stripe account**.
 
@@ -62,6 +66,12 @@ This integration provides a **custom, branded checkout experience** using Stripe
 src/
 ├── lib/
 │   ├── stripe.ts                  # Stripe SDK singleton & utilities
+│   │                              #   getStripe() — default instance
+│   │                              #   getStripeForService(key) — per-provider instances
+│   ├── payment-gateway.ts         # Payment gateway abstraction
+│   │                              #   StripeGateway — uses provider creds when available
+│   │                              #   GatewayCredentials type
+│   │                              #   getProviderGateway() — gateway router
 │   ├── encryption.ts              # AES-256-GCM encryption for keys
 │   ├── checkout-token.ts          # Secure checkout token generation
 │   ├── order-generator.ts         # Order ID generation (ORD-xxx)
@@ -74,9 +84,13 @@ src/
 │   ├── api/
 │   │   ├── create-payment-intent/
 │   │   │   └── route.ts           # Create Payment Intent + Order
+│   │   │                          #   Extracts providerCredentials
+│   │   │                          #   Passes credentials to gateway
 │   │   ├── checkout-session/
 │   │   │   └── [token]/
 │   │   │       └── route.ts       # Resolve checkout token → session data
+│   │   ├── payment-gateways/
+│   │   │   └── route.ts           # List available payment gateways
 │   │   └── stripe/
 │   │       └── webhooks/
 │   │           └── route.ts       # Webhook endpoint
@@ -103,6 +117,9 @@ src/
     ├── Services.ts                # Service collection
     ├── Orders.ts                  # Orders collection
     └── Providers.ts               # Providers collection
+                                   #   gatewayCredentials fields
+                                   #   beforeChange: auto-encrypt secrets
+                                   #   afterRead: auto-decrypt for use
 ```
 
 ---
@@ -114,7 +131,7 @@ src/
 Add these to your `.env` file:
 
 ```bash
-# Stripe Account
+# Stripe Account (Platform default)
 STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxx
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxx
 STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
@@ -122,8 +139,11 @@ STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
 # Site URL (for constructing checkout URLs)
 NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 
-# Optional: Dedicated encryption key (otherwise uses PAYLOAD_SECRET)
+# Encryption key for provider credentials (otherwise uses PAYLOAD_SECRET)
 STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
+
+# Payment Gateway (global default)
+PAYMENT_GATEWAY=stripe  # Options: 'stripe' | 'square' | 'paypal' | 'crypto'
 ```
 
 ### Stripe Dashboard Setup
@@ -138,6 +158,86 @@ STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
      - `charge.dispute.closed`
 
 2. **Copy the webhook signing secret** (`whsec_...`) to your `.env`
+
+---
+
+## Per-Provider Credentials
+
+Providers can use their **own Stripe account** instead of the platform's. This means money from their payments goes directly to their Stripe account.
+
+### How It Works
+
+```
+┌────────────────────────────────────────────────────────┐
+│  create-payment-intent API                             │
+│                                                        │
+│  1. Validate API key → retrieve provider               │
+│  2. Check: provider.useOwnGatewayCredentials?          │
+│                                                        │
+│  YES → Extract decrypted credentials from provider     │
+│        { stripeSecretKey, stripePublishableKey, ... }   │
+│        Pass as `credentials` to gateway.createPayment  │
+│                                                        │
+│  NO  → Use platform defaults (env vars)                │
+│                                                        │
+│  3. StripeGateway.createPayment()                      │
+│     → getStripeInstance(credentials)                    │
+│       → credentials.stripeSecretKey exists?             │
+│         YES → getStripeForService(providerKey) ✅       │
+│         NO  → getStripe() (platform default) ✅         │
+└────────────────────────────────────────────────────────┘
+```
+
+### Stripe Instance Caching
+
+When using provider-specific keys, Stripe instances are **cached per secret key** via `getStripeForService()`:
+
+```typescript
+// src/lib/stripe.ts
+const stripeInstances = new Map<string, Stripe>()
+
+export function getStripeForService(secretKey: string): Stripe {
+  let instance = stripeInstances.get(secretKey)
+  if (!instance) {
+    instance = createStripeInstance(secretKey)
+    stripeInstances.set(secretKey, instance)
+  }
+  return instance
+}
+```
+
+This avoids creating a new Stripe object on every request.
+
+### Credential Storage
+
+Provider credentials are stored in the `Providers` collection:
+
+| Field                  | Encrypted? | Description                         |
+| ---------------------- | ---------- | ----------------------------------- |
+| `stripeSecretKey`      | ✅ Yes     | Provider's Stripe secret key        |
+| `stripePublishableKey` | ❌ No      | Provider's publishable key (public) |
+| `stripeWebhookSecret`  | ✅ Yes     | Provider's webhook signing secret   |
+| `squareAccessToken`    | ✅ Yes     | Provider's Square access token      |
+| `squareLocationId`     | ❌ No      | Square location ID                  |
+| `squareApplicationId`  | ❌ No      | Square application ID               |
+| `paypalClientId`       | ❌ No      | PayPal client ID                    |
+| `paypalClientSecret`   | ✅ Yes     | PayPal client secret                |
+| `cryptoGatewayApiKey`  | ✅ Yes     | Crypto gateway API key              |
+
+### Hooks on the Providers Collection
+
+```
+beforeChange hook:
+  → Detects sensitive fields (secret keys, tokens, etc.)
+  → If field value changed & not already encrypted → encrypt(value)
+  → Stores encrypted value in database
+
+afterRead hook:
+  → For each encrypted field → decrypt(value)
+  → Sets _decryptedFieldName for use in API layer
+  → Masks display value for admin UI (sk_live...1234)
+  → Auto-detects key mode: stripeKeyMode = 'test' | 'live'
+```
 
 ---
 
@@ -193,9 +293,17 @@ Creates a Payment Intent and pending Order. Returns a secure checkout URL.
 {
   "apiKey": "provider_xxxxxxxxxxxxxxxxxxxx",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
-  "amount": 100
+  "amount": 100,
+  "gateway": "stripe"
 }
 ```
+
+| Field        | Required | Description                                        |
+| ------------ | -------- | -------------------------------------------------- |
+| `apiKey`     | Yes      | Provider API key                                   |
+| `amount`     | Yes      | Payment amount in dollars                          |
+| `externalId` | Rec.     | Your internal order ID for tracking                |
+| `gateway`    | No       | Per-request gateway override (`stripe`, `paypal`…) |
 
 **Response (Frontend):**
 
@@ -408,6 +516,7 @@ import { PaymentForm } from '@/components/checkout/PaymentForm'
 1. Check the webhook secret in Stripe Dashboard
 2. Ensure it's copied correctly to `.env`
 3. Make sure you're using the secret for the correct webhook endpoint
+4. If provider uses own credentials, ensure their webhook secret is correct too
 
 #### Payment form not loading
 
@@ -416,6 +525,16 @@ import { PaymentForm } from '@/components/checkout/PaymentForm'
 
 1. Check `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set
 2. Verify the key is valid in Stripe Dashboard
+3. If provider uses own credentials, check their publishable key is set
+
+#### Payment going to wrong Stripe account
+
+**Cause:** Provider credentials not configured correctly
+**Solution:**
+
+1. Verify "Use Own Gateway Credentials" is enabled for the provider
+2. Check the provider's Stripe secret key is entered and encrypted correctly
+3. Look for `Provider "X" using own gateway credentials` in server logs
 
 ### Debug Mode
 
@@ -424,6 +543,7 @@ Enable detailed logging by adding to your API routes:
 ```typescript
 console.log('Payment Intent created:', paymentIntent.id)
 console.log('Checkout token:', checkoutToken)
+console.log('Using provider credentials:', !!providerCredentials)
 ```
 
 ### Testing Cash App Payments
@@ -444,10 +564,11 @@ In **test mode**, Cash App payments work automatically:
 ### Stripe Utilities (`src/lib/stripe.ts`)
 
 ```typescript
-// Get default Stripe instance
+// Get default Stripe instance (platform account)
 const stripe = getStripe()
 
-// Get Stripe for specific service
+// Get Stripe for a specific secret key (provider account)
+// Caches instances per key — safe to call repeatedly
 const stripe = getStripeForService(secretKey)
 
 // Get credentials for a service
@@ -478,6 +599,22 @@ const isEnc = isEncrypted(value)
 
 // Mask for display
 const masked = maskKey('sk_test_xxx') // "sk_test...xxx"
+
+// Validate key format
+const isValid = isValidSecretKeyFormat('sk_test_xxx') // true
+```
+
+### Gateway Utilities (`src/lib/payment-gateway.ts`)
+
+```typescript
+// Get the gateway for a provider (respects credential priority)
+const gateway = getProviderGateway(providerGatewayName)
+
+// Validate a gateway name
+const valid = isValidGatewayName('stripe') // true
+
+// Get all registered gateway names
+const names = getRegisteredGatewayNames() // ['stripe', 'square', 'paypal', 'crypto']
 ```
 
 ---

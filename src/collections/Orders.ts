@@ -4,7 +4,16 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'id',
-    defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider', 'disputeStatus'],
+    defaultColumns: [
+      'id',
+      'createdAt',
+      'status',
+      'total',
+      'itemName',
+      'service',
+      'provider',
+      'disputeStatus',
+    ],
   },
   access: {
     read: () => true,
@@ -50,11 +59,32 @@ export const Orders: CollectionConfig = {
         description: 'External provider that initiated this order (if applicable)',
       },
     },
+    // Service is optional — provider-initiated orders may not have a service
     {
       name: 'service',
       type: 'relationship',
       relationTo: 'services',
-      required: true,
+      required: false,
+      admin: {
+        description: 'Linked service (optional for provider-initiated orders)',
+      },
+    },
+    // For provider-initiated orders without a service, use these fields
+    {
+      name: 'itemName',
+      type: 'text',
+      label: 'Item Name',
+      admin: {
+        description: 'Name/title of the item being purchased (used when no service is linked)',
+      },
+    },
+    {
+      name: 'itemDescription',
+      type: 'textarea',
+      label: 'Item Description',
+      admin: {
+        description: 'Description of the item (used when no service is linked)',
+      },
     },
     {
       name: 'status',
@@ -82,7 +112,7 @@ export const Orders: CollectionConfig = {
       type: 'number',
       defaultValue: 1,
       admin: {
-        description: 'Number of units purchased (Total / Service Price)',
+        description: 'Number of units purchased',
       },
     },
     {
@@ -100,6 +130,29 @@ export const Orders: CollectionConfig = {
       admin: {
         readOnly: true,
         position: 'sidebar',
+      },
+    },
+    // Gateway-agnostic payment ID (maps to stripePaymentIntentId for Stripe,
+    // or a Square payment ID, etc.)
+    {
+      name: 'gatewayPaymentId',
+      type: 'text',
+      index: true,
+      label: 'Gateway Payment ID',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Payment ID from the payment gateway (e.g., Stripe PaymentIntent ID)',
+      },
+    },
+    {
+      name: 'paymentGateway',
+      type: 'text',
+      label: 'Payment Gateway',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Which payment gateway processed this order (e.g., stripe, square)',
       },
     },
 

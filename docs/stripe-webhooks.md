@@ -37,6 +37,16 @@ Your webhook endpoint is located at:
 - Local: `http://localhost:3000/api/stripe/webhooks`
 - Production: `https://your-domain.com/api/stripe/webhooks`
 
+### Per-Provider Webhook Considerations
+
+If a provider uses **their own Stripe account** (via per-provider credentials), webhook events will come from the provider's Stripe account, not the platform's. In this case:
+
+1. The provider must create a webhook endpoint on **their** Stripe Dashboard pointing to the same DZTech webhook URL
+2. The provider's `stripeWebhookSecret` should be stored in their gateway credentials (encrypted) in the admin panel
+3. The platform webhook handler will verify using the appropriate signing secret
+
+> **Note**: Currently, the platform uses the global `STRIPE_WEBHOOKS_ENDPOINT_SECRET` for webhook verification. Per-provider webhook secret routing is a planned enhancement.
+
 ---
 
 ## Local Development Setup

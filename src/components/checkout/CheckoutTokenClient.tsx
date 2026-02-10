@@ -18,17 +18,25 @@ interface ServiceData {
   slug: string
 }
 
+interface ItemData {
+  name: string
+  description: string
+  price: number
+}
+
 interface CheckoutState {
   loading: boolean
   error: string | null
   errorCode: string | null
   service: ServiceData | null
+  item: ItemData | null
   clientSecret: string | null
   paymentOrderId: string | null
   stripePublishableKey: string | null
   provider: string | null
   successRedirectUrl: string | null
   cancelRedirectUrl: string | null
+  amount: number | null
 }
 
 // Payment result status from Stripe redirect
@@ -42,9 +50,10 @@ interface CheckoutSessionData {
   amount: number
   quantity?: number
   serviceName?: string
-  serviceId: string
+  serviceId?: string
   stripePublishableKey?: string
-  service: ServiceData
+  service: ServiceData | null
+  item?: ItemData
   provider?: string
   successRedirectUrl?: string
   cancelRedirectUrl?: string
@@ -74,12 +83,14 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
     error: null,
     errorCode: null,
     service: null,
+    item: null,
     clientSecret: null,
     paymentOrderId: null,
     stripePublishableKey: null,
     provider: null,
     successRedirectUrl: null,
     cancelRedirectUrl: null,
+    amount: null,
   })
 
   const [copied, setCopied] = useState(false)
@@ -124,13 +135,15 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
         setState((prev) => ({
           ...prev,
           loading: false,
-          service: data.service,
+          service: data.service || null,
+          item: data.item || null,
           clientSecret: data.clientSecret,
           paymentOrderId: data.orderId,
           stripePublishableKey: data.stripePublishableKey || null,
           provider: data.provider || null,
           successRedirectUrl: data.successRedirectUrl || null,
           cancelRedirectUrl: data.cancelRedirectUrl || null,
+          amount: data.amount || null,
         }))
       } catch (error) {
         console.error('Checkout initialization error:', error)
@@ -530,7 +543,12 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
     )
   }
 
-  const service = state.service!
+  // Determine display info — works for both service and item orders
+  const service = state.service
+  const item = state.item
+  const displayPrice = service?.price || item?.price || state.amount || 0
+  const displayName = service?.title || item?.name || 'Payment'
+  const displayDescription = item?.description || ''
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -552,6 +570,21 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
             </h3>
 
             <div className="space-y-3">
+              {/* Item/Service Name */}
+              {displayName && displayName !== 'Payment' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 text-sm">Item</span>
+                  <span className="font-semibold text-gray-900 text-sm">{displayName}</span>
+                </div>
+              )}
+
+              {/* Description (for provider orders) */}
+              {displayDescription && (
+                <div className="pt-1">
+                  <p className="text-gray-500 text-xs">{displayDescription}</p>
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
                 <span className="text-gray-500 text-sm">Order ID</span>
                 <div className="flex items-center gap-2">
@@ -572,7 +605,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
               <div className="flex justify-between items-center">
                 <span className="font-bold text-gray-900">Total</span>
                 <span className="text-2xl font-bold text-blue-500">
-                  USD {service.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  USD {displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -587,7 +620,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
               >
                 <CashAppPaymentForm
                   orderId={state.paymentOrderId || ''}
-                  amount={service.price}
+                  amount={displayPrice}
                   returnUrl={typeof window !== 'undefined' ? window.location.href : undefined}
                 />
               </StripeProvider>
@@ -602,16 +635,18 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
           </div>
         </div>
 
-        {/* Back Link */}
-        <div className="mt-6 text-center">
-          <Link
-            href={`/services/${service.slug}`}
-            className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1"
-          >
-            <Icon name="arrow-left" className="h-4 w-4" />
-            Back to Service Details
-          </Link>
-        </div>
+        {/* Back Link — only show for service-based orders */}
+        {service && (
+          <div className="mt-6 text-center">
+            <Link
+              href={`/services/${service.slug}`}
+              className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1"
+            >
+              <Icon name="arrow-left" className="h-4 w-4" />
+              Back to Service Details
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )
