@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui'
 interface CashAppPaymentFormProps {
   orderId: string
   amount: number
+  returnUrl?: string // Optional return URL override
   onSuccess?: () => void
   onError?: (error: string) => void
 }
@@ -14,6 +15,7 @@ interface CashAppPaymentFormProps {
 export function CashAppPaymentForm({
   orderId,
   amount,
+  returnUrl,
   onSuccess,
   onError,
 }: CashAppPaymentFormProps) {
@@ -34,12 +36,15 @@ export function CashAppPaymentForm({
 
     const origin = window.location.origin
 
+    // Use provided returnUrl or fallback to default legacy behavior
+    const finalReturnUrl = returnUrl || `${origin}/checkout?orderId=${orderId}`
+
     // Return to the same checkout page with status params
     // The checkout page will handle displaying success/failure UI
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${origin}/checkout?orderId=${orderId}`,
+        return_url: finalReturnUrl,
       },
     })
 

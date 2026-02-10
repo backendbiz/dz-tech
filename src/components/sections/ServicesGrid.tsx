@@ -1,7 +1,7 @@
 'use client'
+import { useState } from 'react'
 import { Card, Button, Icon, type IconName } from '@/components/ui'
 import { cn } from '@/utils/cn'
-import { generateOrderId } from '@/lib/order-generator'
 
 interface Service {
   id: string
@@ -35,6 +35,8 @@ export function ServicesGrid({
   columns = 3,
   className,
 }: ServicesGridProps) {
+  const [buyingServiceId, setBuyingServiceId] = useState<string | null>(null)
+
   const gridCols = {
     2: 'md:grid-cols-2',
     3: 'md:grid-cols-2 lg:grid-cols-3',
@@ -46,6 +48,37 @@ export function ServicesGrid({
     month: '/month',
     project: '/project',
     'one-time': '',
+  }
+
+  const handleBuyNow = async (serviceId: string) => {
+    setBuyingServiceId(serviceId)
+    try {
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session')
+      }
+
+      const data = await response.json()
+
+      if (data.checkoutToken) {
+        const isLocal =
+          window.location.hostname.includes('localhost') ||
+          window.location.hostname.includes('127.0.0.1')
+        const port = window.location.port ? `:${window.location.port}` : ''
+        const domain = isLocal ? `http://app.localhost${port}` : 'https://app.dztech.shop'
+        const url = `${domain}/checkout/o/${data.checkoutToken}`
+        window.open(url, '_blank')
+      }
+    } catch (error) {
+      console.error('Error initiating checkout:', error)
+    } finally {
+      setBuyingServiceId(null)
+    }
   }
 
   return (
@@ -125,20 +158,10 @@ export function ServicesGrid({
                   <Button
                     variant="secondary"
                     className="w-full"
-                    onClick={() => {
-                      const orderId = generateOrderId()
-                      const isLocal =
-                        window.location.hostname.includes('localhost') ||
-                        window.location.hostname.includes('127.0.0.1')
-                      const port = window.location.port ? `:${window.location.port}` : ''
-                      const domain = isLocal
-                        ? `http://app.localhost${port}`
-                        : 'https://app.dztech.shop'
-                      const url = `${domain}/checkout?orderId=${orderId}&serviceId=${service.id}`
-                      window.open(url, '_blank')
-                    }}
+                    disabled={buyingServiceId === service.id}
+                    onClick={() => handleBuyNow(service.id)}
                   >
-                    Buy Now
+                    {buyingServiceId === service.id ? 'Processing...' : 'Buy Now'}
                   </Button>
                 </div>
               </div>

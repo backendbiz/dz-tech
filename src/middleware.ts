@@ -29,6 +29,11 @@ export function middleware(request: NextRequest) {
   // 2. Checkout Domain Handling (app.dztech.shop)
   // If we are on the checkout domain
   if (hostname === checkoutDomain) {
+    // Handle token-based checkout URLs: /checkout/o/[token]
+    if (url.pathname.startsWith('/checkout/o/')) {
+      // Let Next.js handle the dynamic route directly
+      return NextResponse.next()
+    }
     // Rewrite path /checkout to the implementation at /payment-standalone
     if (url.pathname === '/checkout') {
       return NextResponse.rewrite(new URL('/payment-standalone', request.url))
