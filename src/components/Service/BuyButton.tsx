@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui'
-import { generateOrderId } from '@/lib/order-generator'
 
 interface BuyButtonProps {
   serviceId: string | number
@@ -17,13 +16,25 @@ export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) 
   const handleBuy = async () => {
     setLoading(true)
     try {
-      // Generate a unique order ID
-      const orderId = generateOrderId()
+      // Create payment intent and get a secure checkout token
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId }),
+      })
 
-      // Redirect to custom checkout page with serviceId
-      const checkoutUrl = `/checkout?orderId=${orderId}&serviceId=${serviceId}`
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session')
+      }
 
-      router.push(checkoutUrl)
+      const data = await response.json()
+
+      // Redirect to token-based checkout URL
+      if (data.checkoutToken) {
+        router.push(`/checkout/o/${data.checkoutToken}`)
+      } else {
+        throw new Error('No checkout token received')
+      }
     } catch (error) {
       console.error('Error initiating checkout:', error)
       setLoading(false)

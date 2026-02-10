@@ -628,6 +628,10 @@ export interface Order {
    */
   orderId?: string | null;
   /**
+   * Unique token for secure checkout URL (auto-generated)
+   */
+  checkoutToken?: string | null;
+  /**
    * Provider's internal order/transaction ID for tracking
    */
   externalId?: string | null;
@@ -1284,6 +1288,7 @@ export interface JobsSelect<T extends boolean = true> {
  */
 export interface OrdersSelect<T extends boolean = true> {
   orderId?: T;
+  checkoutToken?: T;
   externalId?: T;
   provider?: T;
   service?: T;

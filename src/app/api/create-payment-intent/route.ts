@@ -2,6 +2,7 @@ import { getPayloadClient } from '@/lib/payload'
 import { NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { isValidApiKeyFormat } from '@/lib/api-key'
+import { generateCheckoutToken } from '@/lib/checkout-token'
 import type { Payload } from 'payload'
 import type { Service, Order, Provider } from '@/payload-types'
 
@@ -19,6 +20,7 @@ async function createPendingOrderWithRetry(
     providerId?: string
     externalId?: string
     clientOrderId?: string
+    checkoutToken: string
   },
   maxRetries: number = 3,
 ): Promise<Order> {
@@ -34,11 +36,28 @@ async function createPendingOrderWithRetry(
       })
 
       if (existingOrders.docs.length > 0) {
-        // Order already exists, return it
+        let existingOrder = existingOrders.docs[0]
+
+        // Ensure existing order has a checkout token (backfill if needed)
+        if (!existingOrder.checkoutToken) {
+          console.log(`Backfilling checkoutToken for existing order: ${existingOrder.id}`)
+          try {
+            existingOrder = await payload.update({
+              collection: 'orders',
+              id: existingOrder.id,
+              data: {
+                checkoutToken: orderData.checkoutToken,
+              },
+            })
+          } catch (err) {
+            console.error('Failed to backfill checkoutToken:', err)
+          }
+        }
+
         console.log(
           `Order for payment intent ${orderData.paymentIntentId} already exists, returning existing`,
         )
-        return existingOrders.docs[0]
+        return existingOrder
       }
 
       // Create the order
@@ -50,6 +69,7 @@ async function createPendingOrderWithRetry(
           total: orderData.price,
           quantity: orderData.quantity || 1,
           stripePaymentIntentId: orderData.paymentIntentId,
+          checkoutToken: orderData.checkoutToken,
           // Store provider reference if applicable
           ...(orderData.providerId && { provider: orderData.providerId }),
           // Store external ID for provider tracking
@@ -163,6 +183,10 @@ async function validateProviderApiKey(
   }
 }
 
+import { generateOrderId } from '@/lib/order-generator'
+
+// ... existing imports
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -177,7 +201,8 @@ export async function POST(req: Request) {
 
     // Check if we are resuming an existing order
     let existingOrder: Order | null = null
-    const incomingOrderId = body.orderId || body.clientOrderId
+    // Use provided orderId or generate one if missing (for new orders)
+    const incomingOrderId = body.orderId || body.clientOrderId || generateOrderId()
 
     if (incomingOrderId) {
       try {
@@ -245,12 +270,27 @@ export async function POST(req: Request) {
             effectiveStatus = 'paid'
           }
 
+          // Build checkout URL using token if available, or generate one
+          let existingCheckoutToken = existingOrder.checkoutToken
+          if (!existingCheckoutToken) {
+            // Backfill: generate token for older orders that don't have one
+            existingCheckoutToken = generateCheckoutToken()
+            payload
+              .update({
+                collection: 'orders',
+                id: existingOrder.id,
+                data: { checkoutToken: existingCheckoutToken },
+              })
+              .catch((err) => console.error('Failed to backfill checkoutToken:', err))
+          }
+
           // Return the existing session details
           return NextResponse.json({
             clientSecret: paymentIntent.client_secret,
             orderId: existingOrder.id,
+            checkoutToken: existingCheckoutToken,
             status: effectiveStatus,
-            checkoutUrl: `${process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'}/checkout?serviceId=${service.id}&orderId=${existingOrder.id}`,
+            checkoutUrl: `${process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'}/checkout/o/${existingCheckoutToken}`,
             amount: existingOrder.total,
             quantity: existingOrder.quantity || 1,
             serviceName: service.title,
@@ -424,6 +464,9 @@ export async function POST(req: Request) {
       },
     )
 
+    // Generate a unique checkout token for this session
+    let checkoutToken = generateCheckoutToken()
+
     // Create a pending order in the database with retry logic
     let orderId: string
     try {
@@ -435,21 +478,28 @@ export async function POST(req: Request) {
         providerId,
         externalId,
         clientOrderId: incomingOrderId, // Pass frontend ID
+        checkoutToken,
       })
       orderId = order.id
+
+      // If we resumed an existing order, use its token instead of the new one
+      if (order.checkoutToken) {
+        checkoutToken = order.checkoutToken
+      }
     } catch (dbError) {
       console.error('Error creating pending order after retries:', dbError)
       // Generate a temporary ID if order creation fails
       orderId = `temp_${paymentIntent.id}`
     }
 
-    // Construct the checkout URL
+    // Construct the checkout URL using the secure token
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'
-    const checkoutUrl = `${baseUrl}/checkout?serviceId=${service.id}&orderId=${orderId}`
+    const checkoutUrl = `${baseUrl}/checkout/o/${checkoutToken}`
 
     const response = {
       clientSecret: paymentIntent.client_secret,
       orderId,
+      checkoutToken,
       checkoutUrl,
       amount: finalAmount,
       quantity,

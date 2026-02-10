@@ -22,6 +22,18 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'checkoutToken',
+      type: 'text',
+      label: 'Checkout Token',
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Unique token for secure checkout URL (auto-generated)',
+      },
+    },
+    {
       name: 'externalId',
       type: 'text',
       label: 'External ID',
