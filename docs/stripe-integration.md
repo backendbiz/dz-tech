@@ -7,10 +7,10 @@
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Configuration](#configuration)
-4. [Per-Service Stripe Accounts](#per-service-stripe-accounts)
-5. [Security Features](#security-features)
-6. [API Reference](#api-reference)
-7. [Webhook Handling](#webhook-handling)
+4. [Security Features](#security-features)
+5. [API Reference](#api-reference)
+6. [Webhook Handling](#webhook-handling)
+7. [Dispute Handling](#dispute-handling)
 8. [Frontend Components](#frontend-components)
 9. [Troubleshooting](#troubleshooting)
 
@@ -20,13 +20,12 @@
 
 This integration provides a **custom, branded checkout experience** using Stripe Payment Elements with **Cash App as the only payment method**. Key features include:
 
-- ✅ Custom checkout UI at `/checkout` (your domain, your branding)
+- ✅ Custom checkout UI at `/checkout/o/{token}` (your domain, your branding)
 - ✅ **Cash App only** payments (no cards)
-- ✅ Multiple Stripe accounts per service
-- ✅ Encrypted API keys stored in database
-- ✅ Automatic key validation before saving
-- ✅ Dashboard indicators showing test/live mode
-- ✅ Webhook handling for payment events
+- ✅ Token-based secure checkout URLs (128-bit unguessable tokens)
+- ✅ Webhook handling for payment and dispute events
+- ✅ Provider integration with API keys and webhooks
+- ✅ Automatic order and payment intent management
 
 > ⚠️ **Important:** Cash App payments require a **US-based Stripe account**.
 
@@ -34,23 +33,23 @@ This integration provides a **custom, branded checkout experience** using Stripe
 
 ```
 ┌──────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Buy Now     │───▶│  /checkout page  │───▶│  Stripe Payment │
-│  Button      │    │  (Custom UI)     │    │  Elements       │
-└──────────────┘    └──────────────────┘    └─────────────────┘
-                              │                       │
-                              ▼                       ▼
+│  Buy Now     │───▶│  /checkout/o/    │───▶│  Stripe Payment │
+│  Button      │    │  {token}         │    │  Elements       │
+└──────────────┘    │  (Custom UI)     │    └─────────────────┘
+                    └──────────────────┘              │
+                              │                       ▼
                     ┌──────────────────┐    ┌─────────────────┐
                     │  Payment Intent  │    │  confirmPayment │
                     │  API             │    │  (Stripe.js)    │
                     └──────────────────┘    └─────────────────┘
                                                       │
-                              ┌───────────────────────┘
+                              ┌────────────────────────┘
                               ▼
                     ┌──────────────────┐    ┌─────────────────┐
-                    │  /checkout/      │◀───│  Stripe Webhook │
-                    │  success         │    │  /api/stripe/   │
-                    └──────────────────┘    │  webhooks       │
-                                            └─────────────────┘
+                    │  /checkout/o/    │◀───│  Stripe Webhook │
+                    │  {token} (same   │    │  /api/stripe/   │
+                    │  page result)    │    │  webhooks       │
+                    └──────────────────┘    └─────────────────┘
 ```
 
 ---
@@ -62,39 +61,48 @@ This integration provides a **custom, branded checkout experience** using Stripe
 ```
 src/
 ├── lib/
-│   ├── stripe.ts              # Stripe SDK singleton & utilities
-│   └── encryption.ts          # AES-256-GCM encryption for keys
-│
-├── hooks/
-│   └── stripeKeyHooks.ts      # Validation & encryption hooks
+│   ├── stripe.ts                  # Stripe SDK singleton & utilities
+│   ├── encryption.ts              # AES-256-GCM encryption for keys
+│   ├── checkout-token.ts          # Secure checkout token generation
+│   ├── order-generator.ts         # Order ID generation (ORD-xxx)
+│   └── api-key.ts                 # Provider API key utilities
 │
 ├── stripe/
-│   └── webhooks.ts            # Webhook event handlers
+│   └── webhooks.ts                # Webhook event handlers
 │
 ├── app/
 │   ├── api/
 │   │   ├── create-payment-intent/
-│   │   │   └── route.ts       # Create Payment Intent
+│   │   │   └── route.ts           # Create Payment Intent + Order
+│   │   ├── checkout-session/
+│   │   │   └── [token]/
+│   │   │       └── route.ts       # Resolve checkout token → session data
 │   │   └── stripe/
 │   │       └── webhooks/
-│   │           └── route.ts   # Webhook endpoint
+│   │           └── route.ts       # Webhook endpoint
 │   │
-│   └── (frontend)/
-│       └── checkout/
-│           ├── page.tsx           # Checkout page
-│           ├── CheckoutClient.tsx # Checkout logic
-│           └── success/
-│               ├── page.tsx       # Success page
-│               └── SuccessClient.tsx
+│   └── (app-checkout)/
+│       ├── layout.tsx             # Checkout layout
+│       ├── checkout/
+│       │   ├── page.tsx           # Legacy checkout page
+│       │   └── o/
+│       │       └── [token]/
+│       │           └── page.tsx   # Token-based checkout page (primary)
+│       └── payment-standalone/
+│           └── page.tsx           # Standalone payment page
 │
 ├── components/
 │   └── checkout/
-│       ├── StripeProvider.tsx     # Stripe Elements provider
-│       ├── PaymentForm.tsx        # Payment form component
-│       └── CashAppPaymentForm.tsx # Cash App specific form
+│       ├── StripeProvider.tsx      # Stripe Elements provider
+│       ├── CheckoutTokenClient.tsx # Token-based checkout (primary)
+│       ├── CheckoutClient.tsx      # Legacy checkout (query params)
+│       ├── PaymentForm.tsx         # Generic payment form
+│       └── CashAppPaymentForm.tsx  # Cash App specific form
 │
 └── collections/
-    └── Services.ts            # Service collection with Stripe config
+    ├── Services.ts                # Service collection
+    ├── Orders.ts                  # Orders collection
+    └── Providers.ts               # Providers collection
 ```
 
 ---
@@ -106,10 +114,13 @@ src/
 Add these to your `.env` file:
 
 ```bash
-# Default Stripe Account
+# Stripe Account
 STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxx
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxx
 STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
+
+# Site URL (for constructing checkout URLs)
+NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 
 # Optional: Dedicated encryption key (otherwise uses PAYLOAD_SECRET)
 STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
@@ -120,63 +131,35 @@ STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
 1. **Create a webhook endpoint** in Stripe Dashboard:
    - URL: `https://your-domain.com/api/stripe/webhooks`
    - Events to listen for:
-     - `checkout.session.completed`
      - `payment_intent.succeeded`
      - `payment_intent.payment_failed`
+     - `charge.dispute.created`
+     - `charge.dispute.updated`
+     - `charge.dispute.closed`
 
 2. **Copy the webhook signing secret** (`whsec_...`) to your `.env`
 
 ---
 
-## Per-Service Stripe Accounts
-
-Each service can have its own Stripe account for receiving payments directly.
-
-### Admin Panel Setup
-
-1. Go to **Admin** → **Services** → **Edit a service**
-2. Scroll to **Stripe Configuration**
-3. Enable **Use Custom Stripe Account**
-4. Enter your keys:
-
-| Field           | Format                         | Example               |
-| --------------- | ------------------------------ | --------------------- |
-| Secret Key      | `sk_test_...` or `sk_live_...` | `sk_test_51ABC123...` |
-| Publishable Key | `pk_test_...` or `pk_live_...` | `pk_test_51ABC123...` |
-| Webhook Secret  | `whsec_...`                    | `whsec_abc123...`     |
-
-### What Happens on Save
-
-1. **Format Validation** — Keys must match expected patterns
-2. **Mode Validation** — Both keys must be test OR both must be live
-3. **API Validation** — Calls `stripe.accounts.retrieve()` to verify key works
-4. **Encryption** — Secret key and webhook secret are encrypted
-5. **Mode Indicator** — Sets 🟢 Live, 🟡 Test, or ⚪ Default
-
-### Dashboard Indicators
-
-The Services list shows a **Stripe Mode** column:
-
-| Icon       | Meaning                                |
-| ---------- | -------------------------------------- |
-| 🟢 Live    | Using live Stripe keys (real payments) |
-| 🟡 Test    | Using test Stripe keys                 |
-| ⚪ Default | Using default `.env` Stripe account    |
-
----
-
 ## Security Features
+
+### Checkout Token Security
+
+Checkout URLs use **cryptographically secure tokens** instead of exposing internal IDs:
+
+| Property     | Value                                    |
+| ------------ | ---------------------------------------- |
+| Token Format | 32-character hex string                  |
+| Entropy      | 128 bits (16 random bytes)               |
+| Generation   | `crypto.randomBytes(16).toString('hex')` |
+| Validation   | `/^[a-f0-9]{32}$/`                       |
+| Storage      | Unique indexed field on Order document   |
+
+**Example URL**: `https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5`
 
 ### Encryption
 
 Sensitive keys are encrypted using **AES-256-GCM** before storing in the database.
-
-```typescript
-// What gets encrypted:
-- stripeSecretKey     ✅ Encrypted
-- stripeWebhookSecret ✅ Encrypted
-- stripePublishableKey ❌ Not encrypted (already public)
-```
 
 ### Encryption Details
 
@@ -188,40 +171,83 @@ Sensitive keys are encrypted using **AES-256-GCM** before storing in the databas
 | Auth Tag       | 16 bytes (integrity verification)                      |
 | Output         | Base64 string                                          |
 
-### Key Validation
-
-Before saving, the system validates:
-
-1. **Key format** — Must match Stripe patterns
-2. **Mode consistency** — Both keys same mode (test/live)
-3. **API verification** — Actually calls Stripe to test the key
-
 ---
 
 ## API Reference
 
 ### POST `/api/create-payment-intent`
 
-Creates a Payment Intent for the checkout flow.
+Creates a Payment Intent and pending Order. Returns a secure checkout URL.
 
-**Request Body:**
+**Request Body (Direct / Frontend):**
 
 ```json
 {
-  "serviceId": "6970fe425827052b...",
-  "orderId": "ORD-20260129-123456-ABC123" // Optional
+  "serviceId": "6970fe425827052b..."
 }
 ```
+
+**Request Body (Provider / API Key):**
+
+```json
+{
+  "apiKey": "provider_xxxxxxxxxxxxxxxxxxxx",
+  "externalId": "YOUR-INTERNAL-ORDER-ID",
+  "amount": 100
+}
+```
+
+**Response (Frontend):**
+
+```json
+{
+  "clientSecret": "pi_xxx_secret_xxx",
+  "orderId": "65b...",
+  "checkoutToken": "caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "amount": 2000,
+  "quantity": 1,
+  "serviceName": "Web Development",
+  "serviceId": "6970fe...",
+  "stripePublishableKey": "pk_test_xxx..."
+}
+```
+
+**Response (Provider via API Key):**
+
+```json
+{
+  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "orderId": "65b...",
+  "externalId": "YOUR-INTERNAL-ORDER-ID",
+  "amount": 100
+}
+```
+
+### GET `/api/checkout-session/[token]`
+
+Resolves a checkout token to the full checkout session data.
 
 **Response:**
 
 ```json
 {
   "clientSecret": "pi_xxx_secret_xxx",
-  "orderId": "ORD-20260129-123456-ABC123",
+  "orderId": "65b...",
+  "checkoutToken": "caa36d0b...",
+  "status": "pending",
   "amount": 2000,
+  "quantity": 1,
   "serviceName": "Web Development",
-  "stripePublishableKey": "pk_test_xxx..."
+  "serviceId": "6970fe...",
+  "stripePublishableKey": "pk_test_xxx...",
+  "service": {
+    "id": "6970fe...",
+    "title": "Web Development",
+    "description": "...",
+    "price": 2000,
+    "slug": "web-development"
+  }
 }
 ```
 
@@ -235,9 +261,11 @@ Handles incoming Stripe webhook events.
 
 **Handled Events:**
 
-- `checkout.session.completed` — Order marked as paid
 - `payment_intent.succeeded` — Order marked as paid
 - `payment_intent.payment_failed` — Order marked as failed
+- `charge.dispute.created` — Order marked as disputed
+- `charge.dispute.updated` — Dispute status updated
+- `charge.dispute.closed` — Dispute status updated (won/lost)
 
 ---
 
@@ -250,27 +278,65 @@ Located in `src/stripe/webhooks.ts`:
 ```typescript
 // Called when payment succeeds
 export const paymentIntentSucceeded = async ({ event }) => {
+  // Finds order by stripePaymentIntentId
   // Updates order status to 'paid'
+  // Notifies provider via webhook (if applicable)
 }
 
 // Called when payment fails
 export const paymentIntentFailed = async ({ event }) => {
+  // Finds order by stripePaymentIntentId
   // Updates order status to 'failed'
+  // Notifies provider via webhook (if applicable)
 }
 
-// Called for checkout session completion
-export const checkoutSessionCompleted = async ({ event }) => {
-  // Creates/updates order
+// Called when a dispute is created
+export const handleDisputeCreated = async ({ event }) => {
+  // Updates order status to 'disputed'
+  // Sets disputeId, disputeStatus, disputeAmount, disputeReason
+}
+
+// Called when a dispute is updated
+export const handleDisputeUpdated = async ({ event }) => {
+  // Updates dispute status on the order
+}
+
+// Called when a dispute is closed
+export const handleDisputeClosed = async ({ event }) => {
+  // Updates dispute status to won/lost
 }
 ```
 
-### Multi-Account Webhook Verification
+### Provider Webhook Notifications
 
-The webhook endpoint automatically:
+When a payment event occurs and the order is linked to a provider, DZTech notifies the provider via their configured webhook URL with exponential backoff retry (up to 5 attempts).
 
-1. Fetches all webhook secrets (default + per-service)
-2. Tries to verify signature with each secret
-3. Processes event with first successful verification
+---
+
+## Dispute Handling
+
+### Dispute Fields on Orders
+
+When a Stripe dispute is created, the following fields are updated on the Order:
+
+| Field         | Type   | Description                |
+| ------------- | ------ | -------------------------- |
+| disputeId     | text   | Stripe Dispute ID          |
+| disputeStatus | select | Current dispute status     |
+| disputeAmount | number | Amount disputed in dollars |
+| disputeReason | text   | Reason for the dispute     |
+
+### Dispute Status Values
+
+| Status                   | Description                          |
+| ------------------------ | ------------------------------------ |
+| `warning_needs_response` | Early fraud warning, needs response  |
+| `warning_under_review`   | Early fraud warning, under review    |
+| `warning_closed`         | Early fraud warning, closed          |
+| `needs_response`         | Dispute created, needs evidence      |
+| `under_review`           | Evidence submitted, under review     |
+| `won`                    | Dispute resolved in your favor       |
+| `lost`                   | Dispute resolved in customer's favor |
 
 ---
 
@@ -284,10 +350,19 @@ Wraps payment forms with Stripe Elements context.
 import { StripeProvider } from '@/components/checkout/StripeProvider'
 ;<StripeProvider
   clientSecret={paymentData.clientSecret}
-  publishableKey={paymentData.stripePublishableKey} // Per-service key
+  publishableKey={paymentData.stripePublishableKey}
 >
-  <PaymentForm />
+  <CashAppPaymentForm />
 </StripeProvider>
+```
+
+### CashAppPaymentForm
+
+Specialized form for Cash App payments.
+
+```tsx
+import { CashAppPaymentForm } from '@/components/checkout/CashAppPaymentForm'
+;<CashAppPaymentForm orderId="ORD-123" amount={2000} />
 ```
 
 ### PaymentForm
@@ -304,35 +379,26 @@ import { PaymentForm } from '@/components/checkout/PaymentForm'
 />
 ```
 
-### CashAppPaymentForm
-
-Specialized form for Cash App payments.
-
-```tsx
-import { CashAppPaymentForm } from '@/components/checkout/CashAppPaymentForm'
-;<CashAppPaymentForm orderId="ORD-123" amount={2000} />
-```
-
 ---
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### "Invalid Stripe secret key format"
+#### "Invalid checkout link"
 
-**Cause:** Key doesn't match expected pattern
-**Solution:** Ensure key starts with `sk_test_` or `sk_live_`
+**Cause:** Token format doesn't match expected pattern (32 hex characters)
+**Solution:** Ensure the checkout URL contains a valid token
 
-#### "Secret key and publishable key mode mismatch"
+#### "Checkout session not found or expired"
 
-**Cause:** One key is test, the other is live
-**Solution:** Use both test keys OR both live keys
+**Cause:** No order exists with the given checkout token
+**Solution:** Verify the order was created successfully and token was stored
 
-#### "Invalid Stripe secret key: Invalid API Key provided"
+#### "Cash App payments are not available for this service"
 
-**Cause:** Key is malformed or revoked
-**Solution:** Generate a new key in Stripe Dashboard
+**Cause:** Stripe account is not US-based
+**Solution:** Use a US-based Stripe account for Cash App payments
 
 #### Webhook signature verification failed
 
@@ -340,7 +406,7 @@ import { CashAppPaymentForm } from '@/components/checkout/CashAppPaymentForm'
 **Solution:**
 
 1. Check the webhook secret in Stripe Dashboard
-2. Ensure it's copied correctly to `.env` or service config
+2. Ensure it's copied correctly to `.env`
 3. Make sure you're using the secret for the correct webhook endpoint
 
 #### Payment form not loading
@@ -357,7 +423,7 @@ Enable detailed logging by adding to your API routes:
 
 ```typescript
 console.log('Payment Intent created:', paymentIntent.id)
-console.log('Using Stripe account:', stripeCredentials.secretKey.slice(-4))
+console.log('Checkout token:', checkoutToken)
 ```
 
 ### Testing Cash App Payments
@@ -388,6 +454,16 @@ const stripe = getStripeForService(secretKey)
 const creds = getStripeCredentialsForService(service.stripeConfig)
 ```
 
+### Checkout Token Utilities (`src/lib/checkout-token.ts`)
+
+```typescript
+// Generate a secure checkout token
+const token = generateCheckoutToken() // e.g., "caa36d0b5aed3f52d2eab944d5b1bdb5"
+
+// Validate a checkout token format
+const isValid = isValidCheckoutToken(token) // true/false
+```
+
 ### Encryption Utilities (`src/lib/encryption.ts`)
 
 ```typescript
@@ -406,39 +482,6 @@ const masked = maskKey('sk_test_xxx') // "sk_test...xxx"
 
 ---
 
-## Migration Notes
-
-### From Stripe Plugin to Custom Integration
-
-If you previously used `@payloadcms/plugin-stripe`:
-
-1. ✅ Plugin removed from `payload.config.ts`
-2. ✅ Custom webhook endpoint created at `/api/stripe/webhooks`
-3. ✅ Same webhook events handled
-4. ⚠️ Update Stripe Dashboard webhook URL if needed
-
-### Database Changes
-
-The Services collection now includes:
-
-```typescript
-stripeConfig: {
-  useCustomStripeAccount: boolean
-  stripeSecretKey: string // Encrypted
-  stripePublishableKey: string // Plain text (public key)
-  stripeWebhookSecret: string // Encrypted
-  stripeKeyMode: 'test' | 'live' | 'unknown'
-}
-```
-
-Run Payload type generation after changes:
-
-```bash
-pnpm payload generate:types
-```
-
----
-
 ## Support
 
 For issues with this integration:
@@ -450,4 +493,4 @@ For issues with this integration:
 
 ---
 
-_Documentation last updated: January 2026_
+_Documentation last updated: February 2026_

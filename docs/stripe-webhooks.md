@@ -1,14 +1,14 @@
 # Stripe Webhook Setup Guide
 
-> Complete guide for setting up Stripe webhooks for payment event handling.
+> Complete guide for setting up Stripe webhooks for payment and dispute event handling.
 
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Local Development Setup](#local-development-setup)
 3. [Production Setup](#production-setup)
-4. [Multi-Account Webhooks](#multi-account-webhooks)
-5. [Event Handlers](#event-handlers)
+4. [Event Handlers](#event-handlers)
+5. [Dispute Handling](#dispute-handling)
 6. [Testing](#testing)
 7. [Troubleshooting](#troubleshooting)
 
@@ -20,7 +20,9 @@ Webhooks allow Stripe to notify your application when events happen in your acco
 
 - ✅ **Payment succeeded** — Update order status to "paid"
 - ❌ **Payment failed** — Update order status to "failed"
-- 📦 **Checkout completed** — Create or update order records
+- ⚖️ **Dispute created** — Update order status to "disputed"
+- 🔄 **Dispute updated** — Track dispute status changes
+- 🏁 **Dispute closed** — Record dispute outcome (won/lost)
 
 ### Webhook Endpoint
 
@@ -118,11 +120,13 @@ Click **"Add endpoint"** and configure:
 
 Click **"Select events"** and choose:
 
-| Event                           | Description                             |
-| ------------------------------- | --------------------------------------- |
-| `checkout.session.completed`    | Checkout session successfully completed |
-| `payment_intent.succeeded`      | Payment was successful                  |
-| `payment_intent.payment_failed` | Payment attempt failed                  |
+| Event                           | Description                           |
+| ------------------------------- | ------------------------------------- |
+| `payment_intent.succeeded`      | Payment was successful                |
+| `payment_intent.payment_failed` | Payment attempt failed                |
+| `charge.dispute.created`        | A dispute was opened against a charge |
+| `charge.dispute.updated`        | A dispute's status changed            |
+| `charge.dispute.closed`         | A dispute was resolved (won or lost)  |
 
 ### Step 4: Get Signing Secret
 
@@ -142,110 +146,139 @@ STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_live_xxxxxxxxxxxxxxxx
 
 ---
 
-## Multi-Account Webhooks
-
-If you're using **different Stripe accounts per service**, each account needs its own webhook configuration.
-
-### For Each Stripe Account:
-
-1. **Login to that Stripe account**
-2. **Create a webhook endpoint** pointing to the same URL:
-   ```
-   https://your-domain.com/api/stripe/webhooks
-   ```
-3. **Select the same events** (see list above)
-4. **Copy the webhook secret**
-5. **Add it to the service** in the PayloadCMS admin panel
-
-### How It Works
-
-The webhook handler tries to verify signatures using:
-
-1. Default webhook secret (from `.env`)
-2. All per-service webhook secrets (from database)
-
-The first successful verification is used to process the event.
-
-### Architecture Diagram
-
-```
-Stripe Account A ─────┐
-                      │
-Stripe Account B ─────┼──→ /api/stripe/webhooks ──→ Verify & Process
-                      │
-Stripe Account C ─────┘
-```
-
----
-
 ## Event Handlers
 
 Event handlers are defined in `src/stripe/webhooks.ts`:
 
 ### payment_intent.succeeded
 
-Called when a payment is successful.
+Called when a payment is successful. Finds the order by `stripePaymentIntentId` and updates its status to `paid`. Notifies the linked provider via webhook if applicable.
 
 ```typescript
-export const paymentIntentSucceeded = async ({ event, payload }) => {
-  const paymentIntent = event.data.object as Stripe.PaymentIntent
-  const orderId = paymentIntent.metadata?.orderId
+export const paymentIntentSucceeded = async ({ event }) => {
+  const paymentIntent = event.data.object
+  const { serviceId, providerId, externalId } = paymentIntent.metadata || {}
 
-  if (orderId) {
-    // Find and update the order
-    const orders = await payload.find({
+  const payload = await getPayloadClient()
+
+  // Find order by payment intent ID
+  const existingOrders = await payload.find({
+    collection: 'orders',
+    where: {
+      stripePaymentIntentId: { equals: paymentIntent.id },
+    },
+    depth: 1,
+  })
+
+  if (existingOrders.docs.length > 0) {
+    await payload.update({
       collection: 'orders',
-      where: { orderId: { equals: orderId } },
+      id: existingOrders.docs[0].id,
+      data: { status: 'paid' },
     })
+  } else if (serviceId) {
+    // Create new order if it doesn't exist
+    await payload.create({
+      collection: 'orders',
+      data: {
+        service: serviceId,
+        status: 'paid',
+        total: paymentIntent.amount / 100,
+        stripePaymentIntentId: paymentIntent.id,
+        ...(providerId && { provider: providerId }),
+        ...(externalId && { externalId }),
+      },
+    })
+  }
 
-    if (orders.docs.length > 0) {
-      await payload.update({
-        collection: 'orders',
-        id: orders.docs[0].id,
-        data: { status: 'paid' },
-      })
-    }
+  // Notify provider if applicable
+  if (providerId) {
+    // Fetch provider and send webhook notification
   }
 }
 ```
 
 ### payment_intent.payment_failed
 
-Called when a payment fails.
+Called when a payment fails. Finds the order by `stripePaymentIntentId` and updates status to `failed`. Notifies the linked provider if applicable.
 
 ```typescript
-export const paymentIntentFailed = async ({ event, payload }) => {
-  const paymentIntent = event.data.object as Stripe.PaymentIntent
-  const orderId = paymentIntent.metadata?.orderId
+export const paymentIntentFailed = async ({ event }) => {
+  const paymentIntent = event.data.object
+  const { providerId } = paymentIntent.metadata || {}
 
-  if (orderId) {
-    // Find and update the order
-    const orders = await payload.find({
+  const payload = await getPayloadClient()
+
+  // Find and update order
+  const existingOrders = await payload.find({
+    collection: 'orders',
+    where: {
+      stripePaymentIntentId: { equals: paymentIntent.id },
+    },
+    depth: 1,
+  })
+
+  if (existingOrders.docs.length > 0) {
+    await payload.update({
       collection: 'orders',
-      where: { orderId: { equals: orderId } },
+      id: existingOrders.docs[0].id,
+      data: { status: 'failed' },
     })
-
-    if (orders.docs.length > 0) {
-      await payload.update({
-        collection: 'orders',
-        id: orders.docs[0].id,
-        data: { status: 'failed' },
-      })
-    }
   }
 }
 ```
 
-### checkout.session.completed
+---
 
-Called when a Checkout Session completes.
+## Dispute Handling
+
+The webhook handler processes three types of dispute events. All use a shared `updateOrderDisputeStatus` helper.
+
+### How It Works
+
+1. **Stripe sends a dispute event** (created, updated, or closed)
+2. **The handler extracts the `payment_intent` ID** from the dispute object
+3. **Finds the order** by matching `stripePaymentIntentId`
+4. **Updates the order** with:
+   - `status` → `"disputed"`
+   - `disputeId` → Stripe dispute ID
+   - `disputeStatus` → Mapped dispute status
+   - `disputeAmount` → Amount in dollars (converted from cents)
+   - `disputeReason` → Reason for the dispute
+
+### Dispute Event Handlers
 
 ```typescript
-export const checkoutSessionCompleted = async ({ event, payload }) => {
-  const session = event.data.object as Stripe.Checkout.Session
-  // Process the completed checkout session
+// charge.dispute.created
+export const handleDisputeCreated = async ({ event }) => {
+  const dispute = event.data.object
+  await updateOrderDisputeStatus(dispute)
+}
+
+// charge.dispute.updated
+export const handleDisputeUpdated = async ({ event }) => {
+  const dispute = event.data.object
+  await updateOrderDisputeStatus(dispute)
+}
+
+// charge.dispute.closed
+export const handleDisputeClosed = async ({ event }) => {
+  const dispute = event.data.object
+  await updateOrderDisputeStatus(dispute)
 }
 ```
+
+### Dispute Status Mapping
+
+| Stripe Status            | Order `disputeStatus`    |
+| ------------------------ | ------------------------ |
+| `warning_needs_response` | `warning_needs_response` |
+| `warning_under_review`   | `warning_under_review`   |
+| `warning_closed`         | `warning_closed`         |
+| `needs_response`         | `needs_response`         |
+| `under_review`           | `under_review`           |
+| `won`                    | `won`                    |
+| `lost`                   | `lost`                   |
 
 ---
 
@@ -262,15 +295,15 @@ stripe trigger payment_intent.succeeded
 # Test failed payment
 stripe trigger payment_intent.payment_failed
 
-# Test checkout completion
-stripe trigger checkout.session.completed
+# Test dispute creation
+stripe trigger charge.dispute.created
 ```
 
 ### Test with Real Payments
 
 1. Start your dev server
 2. Start webhook forwarding: `stripe listen --forward-to http://localhost:3000/api/stripe/webhooks`
-3. Go through the checkout flow using test card: `4242 4242 4242 4242`
+3. Go through the checkout flow using Cash App test mode
 4. Watch the terminal for webhook events
 
 ### View Webhook Logs
@@ -313,7 +346,7 @@ stripe events retrieve evt_xxxxxxxxxxxxx
 
 **Cause:** Event type not handled.
 
-**Solution:** Check that the event type is listed in `STRIPE_CONFIG.webhookEvents` and has a handler.
+**Solution:** Check that the event type is listed in `STRIPE_CONFIG.webhookEvents` and has a handler in the switch statement in `src/app/api/stripe/webhooks/route.ts`.
 
 #### "Connection refused" (Local Development)
 
@@ -323,6 +356,16 @@ stripe events retrieve evt_xxxxxxxxxxxxx
 
 1. Start your dev server first: `pnpm run dev`
 2. Then run: `stripe listen --forward-to http://localhost:3000/api/stripe/webhooks`
+
+#### "No order found for disputed payment intent"
+
+**Cause:** The dispute's payment intent doesn't match any order in the database.
+
+**Solution:**
+
+1. Check that the payment was processed through DZTech
+2. Verify `stripePaymentIntentId` is stored on the order
+3. Check the dispute object in Stripe Dashboard for the correct payment intent ID
 
 ### Debug Mode
 
@@ -351,9 +394,6 @@ console.log('Metadata:', event.data.object.metadata)
 ```bash
 # Required
 STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxx
-
-# For per-service accounts, set in PayloadCMS admin:
-# Services → [Service Name] → Stripe Configuration → Webhook Signing Secret
 ```
 
 ### Stripe CLI Commands
@@ -368,7 +408,7 @@ stripe listen --forward-to http://localhost:3000/api/stripe/webhooks
 # Trigger test events
 stripe trigger payment_intent.succeeded
 stripe trigger payment_intent.payment_failed
-stripe trigger checkout.session.completed
+stripe trigger charge.dispute.created
 
 # View events
 stripe events list --limit 10
@@ -376,11 +416,13 @@ stripe events list --limit 10
 
 ### Supported Events
 
-| Event                           | Handler                    | Action                    |
-| ------------------------------- | -------------------------- | ------------------------- |
-| `payment_intent.succeeded`      | `paymentIntentSucceeded`   | Updates order to "paid"   |
-| `payment_intent.payment_failed` | `paymentIntentFailed`      | Updates order to "failed" |
-| `checkout.session.completed`    | `checkoutSessionCompleted` | Creates/updates order     |
+| Event                           | Handler                  | Action                          |
+| ------------------------------- | ------------------------ | ------------------------------- |
+| `payment_intent.succeeded`      | `paymentIntentSucceeded` | Updates order to "paid"         |
+| `payment_intent.payment_failed` | `paymentIntentFailed`    | Updates order to "failed"       |
+| `charge.dispute.created`        | `handleDisputeCreated`   | Updates order to "disputed"     |
+| `charge.dispute.updated`        | `handleDisputeUpdated`   | Updates dispute status on order |
+| `charge.dispute.closed`         | `handleDisputeClosed`    | Updates dispute to won/lost     |
 
 ---
 
@@ -394,4 +436,4 @@ stripe events list --limit 10
 
 ---
 
-_Documentation last updated: January 2026_
+_Documentation last updated: February 2026_

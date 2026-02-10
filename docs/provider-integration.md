@@ -55,7 +55,7 @@ Provider Backend                DZTech                      User
       │                            │                          │
       │  Redirect user ───────────────────────────────────────►│
       │                            │                          │
-      │                            │  /checkout?orderId=xxx   │
+      │                            │  /checkout/o/{token}     │
       │                            │ ◄─────────────────────────│
       │                            │                          │
       │                            │  Cash App Payment        │
@@ -71,16 +71,19 @@ Provider Backend                DZTech                      User
       │ ◄──────────────────────────│                          │
 ```
 
-### Flow 2: Payment Link Integration (Shareable Links)
+### Flow 2: Direct Service Checkout (Buy Button)
 
 ```
-Admin creates Payment Link for Service
+User clicks "Buy Now" on DZTech Service Page
       │
       ▼
-Payment Link URL: /checkout?paymentLinkId=plink_xxx
+POST /api/create-payment-intent { serviceId }
       │
       ▼
-User clicks link → Custom Checkout Page → Cash App → Success UI
+Redirect to /checkout/o/{checkoutToken}
+      │
+      ▼
+User pays via Cash App → Same Page (Success/Failed UI)
 ```
 
 ---
@@ -95,7 +98,7 @@ User clicks link → Custom Checkout Page → Cash App → Success UI
    - **Price**: Unit price (e.g., $5)
    - **Slug**: URL-friendly identifier
 
-3. **Save** → The system auto-creates a Stripe Payment Link
+3. **Save** the service
 
 ### Step 2: Create the Provider
 
@@ -103,15 +106,15 @@ User clicks link → Custom Checkout Page → Cash App → Success UI
 2. Click **Create New Provider**
 3. Fill in:
 
-| Field                    | Example                                             | Description                              |
-| ------------------------ | --------------------------------------------------- | ---------------------------------------- |
-| **Provider Name**        | Bitloader                                           | Display name                             |
-| **Provider Slug**        | `bitloader`                                         | URL-friendly identifier                  |
-| **Linked Service**       | Premium Credits                                     | Service this provider sells              |
-| **Status**               | 🟢 Active                                           | Enable/disable the provider              |
-| **Webhook URL**          | `https://bitloader.com/api/webhooks/dztech`         | Where to send payment notifications      |
-| **Success Redirect URL** | `https://bitloader.com/success?orderId={orderId}`   | Redirect after successful payment        |
-| **Cancel Redirect URL**  | `https://bitloader.com/cancelled`                   | Redirect after cancelled payment         |
+| Field                    | Example                                           | Description                         |
+| ------------------------ | ------------------------------------------------- | ----------------------------------- |
+| **Provider Name**        | Bitloader                                         | Display name                        |
+| **Provider Slug**        | `bitloader`                                       | URL-friendly identifier             |
+| **Linked Service**       | Premium Credits                                   | Service this provider sells         |
+| **Status**               | 🟢 Active                                         | Enable/disable the provider         |
+| **Webhook URL**          | `https://bitloader.com/api/webhooks/dztech`       | Where to send payment notifications |
+| **Success Redirect URL** | `https://bitloader.com/success?orderId={orderId}` | Redirect after successful payment   |
+| **Cancel Redirect URL**  | `https://bitloader.com/cancelled`                 | Redirect after cancelled payment    |
 
 4. **Save** → Copy the auto-generated **API Key**
 
@@ -123,7 +126,7 @@ User clicks link → Custom Checkout Page → Cash App → Success UI
 
 ### POST /api/create-payment-intent
 
-Creates a payment session and returns a checkout URL.
+Creates a payment session and returns a secure checkout URL.
 
 **Request Body**:
 
@@ -135,11 +138,11 @@ Creates a payment session and returns a checkout URL.
 }
 ```
 
-| Field        | Required    | Description                                          |
-| ------------ | ----------- | ---------------------------------------------------- |
-| `apiKey`     | Yes         | Your provider API key                                |
-| `externalId` | Recommended | Your internal order/transaction ID for tracking      |
-| `amount`     | No          | Custom amount (must be multiple of service price)    |
+| Field        | Required    | Description                                       |
+| ------------ | ----------- | ------------------------------------------------- |
+| `apiKey`     | Yes         | Your provider API key                             |
+| `externalId` | Recommended | Your internal order/transaction ID for tracking   |
+| `amount`     | No          | Custom amount (must be multiple of service price) |
 
 **Amount & Quantity Logic**:
 
@@ -157,22 +160,24 @@ Creates a payment session and returns a checkout URL.
 
 ```json
 {
-  "checkoutUrl": "https://dztech.shop/checkout?serviceId=abc123&orderId=65b...",
+  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
   "orderId": "65b...",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
   "amount": 100
 }
 ```
 
+> **Note**: The `checkoutUrl` uses a secure, unguessable checkout token. Redirect your users to this URL to complete payment.
+
 **Error Responses**:
 
-| Status | Error                                    | Description                        |
-| ------ | ---------------------------------------- | ---------------------------------- |
-| 401    | Invalid or inactive API key              | Check API key and provider status  |
-| 400    | Amount must be a multiple of 5           | Amount validation failed           |
-| 400    | Amount cannot be less than service price | Minimum amount not met             |
-| 400    | Cash App payments are not available      | Stripe account issue               |
-| 500    | Server error                             | Contact support                    |
+| Status | Error                                    | Description                       |
+| ------ | ---------------------------------------- | --------------------------------- |
+| 401    | Invalid or inactive API key              | Check API key and provider status |
+| 400    | Amount must be a multiple of 5           | Amount validation failed          |
+| 400    | Amount cannot be less than service price | Minimum amount not met            |
+| 400    | Cash App payments are not available      | Stripe account issue              |
+| 500    | Server error                             | Contact support                   |
 
 ---
 
@@ -180,8 +185,8 @@ Creates a payment session and returns a checkout URL.
 
 ### What Users See
 
-1. **Checkout Page** (`/checkout?orderId=xxx`)
-   - Order ID displayed
+1. **Checkout Page** (`/checkout/o/{checkoutToken}`)
+   - Service details displayed
    - Amount to pay
    - Cash App payment button
 
@@ -220,7 +225,6 @@ X-DZTech-Webhook: payment-notification
   "serviceId": "abc123",
   "serviceName": "Premium Credits",
   "amount": 100,
-  "quantity": 20,
   "status": "paid",
   "stripePaymentIntentId": "pi_xxx",
   "timestamp": "2026-01-30T10:00:00.000Z"
@@ -247,6 +251,20 @@ X-DZTech-Webhook: payment-notification
 
 > **Important**: Use the `externalId` field to match webhook notifications with your internal orders.
 
+### Webhook Retry Logic
+
+DZTech uses **exponential backoff** for webhook delivery:
+
+| Attempt | Delay     |
+| ------- | --------- |
+| 1       | Immediate |
+| 2       | 1 second  |
+| 3       | 2 seconds |
+| 4       | 4 seconds |
+| 5       | 8 seconds |
+
+If all 5 attempts fail, the webhook is logged for manual replay.
+
 ---
 
 ## Complete Integration Example
@@ -261,7 +279,7 @@ const DZTECH_API_KEY = process.env.DZTECH_API_KEY
 async function createPaymentSession(userId, quantity) {
   // Generate a unique external ID for tracking
   const externalId = `ORDER-${userId}-${Date.now()}`
-  
+
   // Calculate amount (e.g., $5 per unit)
   const amount = quantity * 5
 
@@ -318,7 +336,7 @@ async function handleBuy(quantity) {
 
     const { checkoutUrl } = await response.json()
 
-    // Redirect to DZTech checkout
+    // Redirect to DZTech checkout (token-based URL)
     window.location.href = checkoutUrl
   } catch (error) {
     console.error('Payment error:', error)
@@ -338,29 +356,29 @@ app.post('/api/webhooks/dztech', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const { event, externalId, amount, quantity, status } = req.body
+  const { event, externalId, amount, status } = req.body
 
   console.log(`Received ${event} for order ${externalId}`)
 
   // Find order using YOUR externalId
   const order = await db.orders.findById(externalId)
-  
+
   if (!order) {
     console.error(`Order not found: ${externalId}`)
     return res.status(200).json({ received: true })
   }
 
   if (event === 'payment_succeeded') {
-    await db.orders.update(order.id, { 
-      status: 'paid', 
-      paidAt: new Date() 
+    await db.orders.update(order.id, {
+      status: 'paid',
+      paidAt: new Date(),
     })
-    
+
     // Grant credits/access to user
-    await grantCredits(order.userId, quantity)
-    
+    await grantCredits(order.userId, order.quantity)
+
     // Send confirmation
-    await sendConfirmationEmail(order.userId, { amount, quantity })
+    await sendConfirmationEmail(order.userId, { amount })
   } else if (event === 'payment_failed') {
     await db.orders.update(order.id, { status: 'failed' })
     await sendFailureNotification(order.userId)
@@ -397,20 +415,16 @@ export default function SuccessPage() {
 
 Payments made through DZTech include helpful metadata visible in Stripe:
 
-| Metadata Field     | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `serviceId`        | DZTech service ID                              |
-| `serviceName`      | Service name (e.g., "Premium Credits")         |
-| `quantity`         | Number of units purchased                      |
-| `providerId`       | Provider's ID (if applicable)                  |
-| `providerName`     | Provider's name (if applicable)                |
-| `externalId`       | Provider's internal order ID                   |
-| `paymentLinkId`    | Stripe Payment Link ID (if used)               |
+| Metadata Field | Description                   |
+| -------------- | ----------------------------- |
+| `serviceId`    | DZTech service ID             |
+| `providerId`   | Provider's ID (if applicable) |
+| `externalId`   | Provider's internal order ID  |
 
 **Payment Description Format**:
-- With Payment Link: `Premium Credits | PaymentLink: plink_xxx`
-- Direct/API: `Premium Credits | Direct`
-- With Provider: `Premium Credits | Direct (Bitloader)`
+
+- Direct: `ServiceName | Direct`
+- With Provider: `ServiceName | Direct (ProviderName)`
 
 ---
 
@@ -421,6 +435,7 @@ Payments made through DZTech include helpful metadata visible in Stripe:
 3. **HTTPS Only**: All API calls must be over HTTPS
 4. **Idempotency**: Handle duplicate webhook notifications gracefully
 5. **Order Verification**: Wait for webhook before granting access (don't trust client)
+6. **Checkout Tokens**: Checkout URLs use cryptographically secure 128-bit tokens, preventing URL guessing
 
 ---
 
@@ -442,6 +457,7 @@ curl -X POST https://dztech.shop/api/create-payment-intent \
 ### Stripe Test Mode
 
 Use Stripe's test mode credentials. For Cash App testing:
+
 - Use `$test_cashtag` in the Cash App sandbox
 - All test payments will succeed
 
@@ -449,17 +465,21 @@ Use Stripe's test mode credentials. For Cash App testing:
 
 ## Troubleshooting
 
-| Issue                               | Solution                                          |
-| ----------------------------------- | ------------------------------------------------- |
-| "Invalid or inactive API key"       | Check API key, verify provider status is Active   |
-| "Amount must be a multiple of 5"    | Ensure amount is divisible by service price       |
-| "Cash App not available"            | Requires US-based Stripe account                  |
-| Webhook not received                | Check URL is publicly accessible, responds 200    |
-| User not redirected                 | Verify `successRedirectUrl` has `{orderId}`       |
-| Duplicate webhooks                  | Implement idempotency using `externalId`          |
+| Issue                            | Solution                                        |
+| -------------------------------- | ----------------------------------------------- |
+| "Invalid or inactive API key"    | Check API key, verify provider status is Active |
+| "Amount must be a multiple of 5" | Ensure amount is divisible by service price     |
+| "Cash App not available"         | Requires US-based Stripe account                |
+| Webhook not received             | Check URL is publicly accessible, responds 200  |
+| User not redirected              | Verify `successRedirectUrl` has `{orderId}`     |
+| Duplicate webhooks               | Implement idempotency using `externalId`        |
 
 ---
 
 ## Support
 
 For integration support, contact: support@dztech.shop
+
+---
+
+_Documentation last updated: February 2026_
