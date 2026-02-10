@@ -7,11 +7,10 @@ import { generateOrderId } from '@/lib/order-generator'
 
 interface BuyButtonProps {
   serviceId: string | number
-  paymentLinkId?: string | null
   label?: string
 }
 
-export function BuyButton({ serviceId, paymentLinkId, label = 'Get Started' }: BuyButtonProps) {
+export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -21,14 +20,8 @@ export function BuyButton({ serviceId, paymentLinkId, label = 'Get Started' }: B
       // Generate a unique order ID
       const orderId = generateOrderId()
 
-      // Redirect to custom checkout page
-      // Prioritize Payment Link ID if available
-      let checkoutUrl = ''
-      if (paymentLinkId) {
-        checkoutUrl = `/checkout?orderId=${orderId}&paymentLinkId=${paymentLinkId}`
-      } else {
-        checkoutUrl = `/checkout?orderId=${orderId}&serviceId=${serviceId}`
-      }
+      // Redirect to custom checkout page with serviceId
+      const checkoutUrl = `/checkout?orderId=${orderId}&serviceId=${serviceId}`
 
       router.push(checkoutUrl)
     } catch (error) {

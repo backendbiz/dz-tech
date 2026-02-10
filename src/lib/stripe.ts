@@ -48,9 +48,9 @@ export function getStripeForService(secretKey: string): Stripe {
  */
 function createStripeInstance(secretKey: string): Stripe {
   return new Stripe(secretKey, {
-    // Use a consistent API version across the app
+    // Use the latest API version
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    apiVersion: '2024-12-18.acacia' as any,
+    apiVersion: '2026-01-28.clover' as any,
     // Retry configuration
     maxNetworkRetries: 2,
     // Timeout in milliseconds
@@ -178,50 +178,6 @@ export async function cancelPaymentIntent(
   return stripe.paymentIntents.cancel(paymentIntentId)
 }
 
-/**
- * Generate a Payment Link for a specific amount and product name
- */
-export async function createPaymentLink({
-  amount,
-  currency = 'usd',
-  productName,
-  metadata = {},
-  stripeSecretKey,
-}: {
-  amount: number
-  currency?: string
-  productName: string
-  metadata?: Record<string, string>
-  stripeSecretKey?: string
-}): Promise<Stripe.PaymentLink> {
-  const stripe = stripeSecretKey ? getStripeForService(stripeSecretKey) : getStripe()
-
-  // 1. Create a Price (and implicitly a Product)
-  const price = await stripe.prices.create({
-    currency,
-    unit_amount: Math.round(amount * 100),
-    product_data: {
-      name: productName,
-      metadata,
-    },
-    metadata,
-  })
-
-  // 2. Create the Payment Link
-  const paymentLink = await stripe.paymentLinks.create({
-    line_items: [
-      {
-        price: price.id,
-        quantity: 1,
-      },
-    ],
-    metadata,
-    // Add any other default behavior here (e.g. redirect URLs)
-  })
-
-  return paymentLink
-}
-
 // ============================================
 // Configuration
 // ============================================
@@ -231,8 +187,10 @@ export const STRIPE_CONFIG = {
   paymentMethods: ['cashapp'] as const,
   // Webhook event types we handle
   webhookEvents: [
-    'checkout.session.completed',
     'payment_intent.succeeded',
     'payment_intent.payment_failed',
+    'charge.dispute.created',
+    'charge.dispute.updated',
+    'charge.dispute.closed',
   ] as const,
 } as const

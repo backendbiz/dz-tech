@@ -573,13 +573,6 @@ export interface Service {
   order?: number | null;
   status: 'draft' | 'published';
   featured?: boolean | null;
-  stripeProductId?: string | null;
-  stripePriceId?: string | null;
-  stripePaymentLinkId?: string | null;
-  /**
-   * Auto-generated Stripe Payment Link
-   */
-  stripePaymentLinkUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -643,7 +636,7 @@ export interface Order {
    */
   provider?: (string | null) | Provider;
   service: string | Service;
-  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  status: 'pending' | 'paid' | 'failed' | 'refunded' | 'disputed';
   total: number;
   /**
    * Number of units purchased (Total / Service Price)
@@ -651,11 +644,24 @@ export interface Order {
   quantity?: number | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
-  /**
-   * Stripe Payment Link ID used for this order (if applicable)
-   */
-  stripePaymentLinkId?: string | null;
   customerEmail?: string | null;
+  disputeId?: string | null;
+  disputeStatus?:
+    | (
+        | 'warning_needs_response'
+        | 'warning_under_review'
+        | 'warning_closed'
+        | 'needs_response'
+        | 'under_review'
+        | 'won'
+        | 'lost'
+      )
+    | null;
+  /**
+   * Amount disputed in dollars
+   */
+  disputeAmount?: number | null;
+  disputeReason?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1230,10 +1236,6 @@ export interface ServicesSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   featured?: T;
-  stripeProductId?: T;
-  stripePriceId?: T;
-  stripePaymentLinkId?: T;
-  stripePaymentLinkUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1290,8 +1292,11 @@ export interface OrdersSelect<T extends boolean = true> {
   quantity?: T;
   stripeSessionId?: T;
   stripePaymentIntentId?: T;
-  stripePaymentLinkId?: T;
   customerEmail?: T;
+  disputeId?: T;
+  disputeStatus?: T;
+  disputeAmount?: T;
+  disputeReason?: T;
   updatedAt?: T;
   createdAt?: T;
 }

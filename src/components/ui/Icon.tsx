@@ -36,6 +36,10 @@ import {
   Check,
   RefreshCw,
   Headphones,
+  DollarSign,
+  XCircle,
+  AlertTriangle,
+  ShoppingBag,
   type LucideProps,
 } from 'lucide-react'
 
@@ -78,6 +82,10 @@ const icons = {
   check: Check,
   'refresh-cw': RefreshCw,
   headphones: Headphones,
+  'dollar-sign': DollarSign,
+  'x-circle': XCircle,
+  'alert-triangle': AlertTriangle,
+  'shopping-bag': ShoppingBag,
 }
 
 export type IconName = keyof typeof icons

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripe, getStripeForService, type ServiceStripeConfig } from '@/lib/stripe'
-import { getPayloadClient } from '@/lib/payload'
+import { getStripe } from '@/lib/stripe'
+
 import {
-  checkoutSessionCompleted,
   paymentIntentSucceeded,
   paymentIntentFailed,
+  handleDisputeCreated,
+  handleDisputeUpdated,
+  handleDisputeClosed,
 } from '@/stripe/webhooks'
 import type Stripe from 'stripe'
 
@@ -41,16 +43,24 @@ export async function POST(req: NextRequest) {
   // Handle the event
   try {
     switch (event.type) {
-      case 'checkout.session.completed':
-        await checkoutSessionCompleted({ event })
-        break
-
       case 'payment_intent.succeeded':
         await paymentIntentSucceeded({ event })
         break
 
       case 'payment_intent.payment_failed':
         await paymentIntentFailed({ event })
+        break
+
+      case 'charge.dispute.created':
+        await handleDisputeCreated({ event })
+        break
+
+      case 'charge.dispute.updated':
+        await handleDisputeUpdated({ event })
+        break
+
+      case 'charge.dispute.closed':
+        await handleDisputeClosed({ event })
         break
 
       default:

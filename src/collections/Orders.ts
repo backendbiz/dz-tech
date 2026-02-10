@@ -4,7 +4,7 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'id',
-    defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider', 'stripePaymentLinkId'],
+    defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider', 'disputeStatus'],
   },
   access: {
     read: () => true,
@@ -52,9 +52,13 @@ export const Orders: CollectionConfig = {
         { label: 'Paid', value: 'paid' },
         { label: 'Failed', value: 'failed' },
         { label: 'Refunded', value: 'refunded' },
+        { label: 'Disputed', value: 'disputed' },
       ],
       defaultValue: 'pending',
       required: true,
+      admin: {
+        position: 'sidebar',
+      },
     },
     {
       name: 'total',
@@ -74,6 +78,7 @@ export const Orders: CollectionConfig = {
       type: 'text',
       admin: {
         readOnly: true,
+        position: 'sidebar',
       },
     },
     {
@@ -82,20 +87,56 @@ export const Orders: CollectionConfig = {
       index: true,
       admin: {
         readOnly: true,
+        position: 'sidebar',
       },
     },
-    {
-      name: 'stripePaymentLinkId',
-      type: 'text',
-      index: true,
-      admin: {
-        readOnly: true,
-        description: 'Stripe Payment Link ID used for this order (if applicable)',
-      },
-    },
+
     {
       name: 'customerEmail',
       type: 'email',
+    },
+    // Dispute Tracking Fields
+    {
+      name: 'disputeId',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'disputeStatus',
+      type: 'select',
+      options: [
+        { label: 'Warning Needs Response', value: 'warning_needs_response' },
+        { label: 'Warning Under Review', value: 'warning_under_review' },
+        { label: 'Warning Closed', value: 'warning_closed' },
+        { label: 'Needs Response', value: 'needs_response' },
+        { label: 'Under Review', value: 'under_review' },
+        { label: 'Won', value: 'won' },
+        { label: 'Lost', value: 'lost' },
+      ],
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'disputeAmount',
+      type: 'number',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Amount disputed in dollars',
+      },
+    },
+    {
+      name: 'disputeReason',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
     },
   ],
 }

@@ -145,7 +145,7 @@ export default async function ServicePage({ params }: Props) {
                   )}
                 </div>
 
-                <BuyButton serviceId={service.id} paymentLinkId={service.stripePaymentLinkId} />
+                <BuyButton serviceId={service.id} />
 
                 <Button variant="outline" href="/contact" className="w-full">
                   Request Quote
