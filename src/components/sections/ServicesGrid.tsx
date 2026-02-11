@@ -66,12 +66,8 @@ export function ServicesGrid({
       const data = await response.json()
 
       if (data.checkoutToken) {
-        const isLocal =
-          window.location.hostname.includes('localhost') ||
-          window.location.hostname.includes('127.0.0.1')
-        const port = window.location.port ? `:${window.location.port}` : ''
-        const domain = isLocal ? `http://app.localhost${port}` : 'https://app.dztech.shop'
-        const url = `${domain}/checkout/o/${data.checkoutToken}`
+        const checkoutBaseUrl = process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://app.dztech.shop'
+        const url = `${checkoutBaseUrl}/checkout/o/${data.checkoutToken}`
         window.open(url, '_blank')
       }
     } catch (error) {

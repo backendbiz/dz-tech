@@ -290,7 +290,7 @@ export async function POST(req: Request) {
             orderId: existingOrder.id,
             checkoutToken: existingCheckoutToken,
             status: effectiveStatus,
-            checkoutUrl: `${process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'}/checkout/o/${existingCheckoutToken}`,
+            checkoutUrl: `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://app.dztech.shop'}/checkout/o/${existingCheckoutToken}`,
             amount: existingOrder.total,
             quantity: existingOrder.quantity || 1,
             serviceName: service.title,
@@ -493,7 +493,7 @@ export async function POST(req: Request) {
     }
 
     // Construct the checkout URL using the secure token
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'https://app.dztech.shop'
+    const baseUrl = process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://app.dztech.shop'
     const checkoutUrl = `${baseUrl}/checkout/o/${checkoutToken}`
 
     const response = {
