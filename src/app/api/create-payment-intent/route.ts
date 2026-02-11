@@ -286,7 +286,6 @@ export async function POST(req: Request) {
 
           // Return the existing session details
           return NextResponse.json({
-            clientSecret: paymentIntent.client_secret,
             orderId: existingOrder.id,
             checkoutToken: existingCheckoutToken,
             status: effectiveStatus,
@@ -496,7 +495,6 @@ export async function POST(req: Request) {
     const checkoutUrl = `${baseUrl}/checkout/o/${checkoutToken}`
 
     const response = {
-      clientSecret: paymentIntent.client_secret,
       orderId,
       checkoutToken,
       checkoutUrl,
