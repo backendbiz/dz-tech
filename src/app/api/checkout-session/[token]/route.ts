@@ -85,12 +85,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
           }
         }
 
-        // Also sync failed/canceled status from Stripe
-        if (
-          (paymentIntent.status === 'canceled' ||
-            paymentIntent.status === 'requires_payment_method') &&
-          effectiveStatus === 'pending'
-        ) {
+        // Also sync canceled status from Stripe
+        // NOTE: Do NOT treat 'requires_payment_method' as failed — that's the
+        // normal initial state before the customer has paid
+        if (paymentIntent.status === 'canceled' && effectiveStatus === 'pending') {
           effectiveStatus = 'failed'
           try {
             await payload.update({
