@@ -21,11 +21,9 @@
 This integration provides a **custom, branded checkout experience** using Stripe Payment Elements with **Cash App as the only payment method**. Key features include:
 
 - ✅ Custom checkout UI at `/checkout` (your domain, your branding)
-- ✅ **Cash App only** payments (no cards)
-- ✅ Multiple Stripe accounts per service
-- ✅ Encrypted API keys stored in database
-- ✅ Automatic key validation before saving
-- ✅ Dashboard indicators showing test/live mode
+- ✅ **Cash App only** payments (via Stripe)
+- ✅ Secure API Key authentication for Providers
+- ✅ Dashboard indicators showing dispute status
 - ✅ Webhook handling for payment events
 
 > ⚠️ **Important:** Cash App payments require a **US-based Stripe account**.
@@ -115,53 +113,7 @@ STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxx
 STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
 ```
 
-### Stripe Dashboard Setup
-
-1. **Create a webhook endpoint** in Stripe Dashboard:
-   - URL: `https://your-domain.com/api/stripe/webhooks`
-   - Events to listen for:
-     - `checkout.session.completed`
-     - `payment_intent.succeeded`
-     - `payment_intent.payment_failed`
-
-2. **Copy the webhook signing secret** (`whsec_...`) to your `.env`
-
----
-
-## Per-Service Stripe Accounts
-
-Each service can have its own Stripe account for receiving payments directly.
-
-### Admin Panel Setup
-
-1. Go to **Admin** → **Services** → **Edit a service**
-2. Scroll to **Stripe Configuration**
-3. Enable **Use Custom Stripe Account**
-4. Enter your keys:
-
-| Field           | Format                         | Example               |
-| --------------- | ------------------------------ | --------------------- |
-| Secret Key      | `sk_test_...` or `sk_live_...` | `sk_test_51ABC123...` |
-| Publishable Key | `pk_test_...` or `pk_live_...` | `pk_test_51ABC123...` |
-| Webhook Secret  | `whsec_...`                    | `whsec_abc123...`     |
-
-### What Happens on Save
-
-1. **Format Validation** — Keys must match expected patterns
-2. **Mode Validation** — Both keys must be test OR both must be live
-3. **API Validation** — Calls `stripe.accounts.retrieve()` to verify key works
-4. **Encryption** — Secret key and webhook secret are encrypted
-5. **Mode Indicator** — Sets 🟢 Live, 🟡 Test, or ⚪ Default
-
-### Dashboard Indicators
-
-The Services list shows a **Stripe Mode** column:
-
-| Icon       | Meaning                                |
-| ---------- | -------------------------------------- |
-| 🟢 Live    | Using live Stripe keys (real payments) |
-| 🟡 Test    | Using test Stripe keys                 |
-| ⚪ Default | Using default `.env` Stripe account    |
+## Configuration
 
 ---
 
@@ -170,31 +122,6 @@ The Services list shows a **Stripe Mode** column:
 ### Encryption
 
 Sensitive keys are encrypted using **AES-256-GCM** before storing in the database.
-
-```typescript
-// What gets encrypted:
-- stripeSecretKey     ✅ Encrypted
-- stripeWebhookSecret ✅ Encrypted
-- stripePublishableKey ❌ Not encrypted (already public)
-```
-
-### Encryption Details
-
-| Property       | Value                                                  |
-| -------------- | ------------------------------------------------------ |
-| Algorithm      | AES-256-GCM                                            |
-| Key Derivation | SHA-256 of `STRIPE_ENCRYPTION_KEY` or `PAYLOAD_SECRET` |
-| IV             | 16 random bytes per encryption                         |
-| Auth Tag       | 16 bytes (integrity verification)                      |
-| Output         | Base64 string                                          |
-
-### Key Validation
-
-Before saving, the system validates:
-
-1. **Key format** — Must match Stripe patterns
-2. **Mode consistency** — Both keys same mode (test/live)
-3. **API verification** — Actually calls Stripe to test the key
 
 ---
 
@@ -264,13 +191,9 @@ export const checkoutSessionCompleted = async ({ event }) => {
 }
 ```
 
-### Multi-Account Webhook Verification
+### Webhook Verification
 
-The webhook endpoint automatically:
-
-1. Fetches all webhook secrets (default + per-service)
-2. Tries to verify signature with each secret
-3. Processes event with first successful verification
+The webhook endpoint verifies the request signature using the `STRIPE_WEBHOOKS_ENDPOINT_SECRET` environment variable to ensure authenticity.
 
 ---
 

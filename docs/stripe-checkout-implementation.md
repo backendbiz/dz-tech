@@ -19,8 +19,8 @@ User clicks "Buy" → Generate Order ID → Checkout Page → Cash App → Same 
 ### Key Components
 
 1. **BuyButton Component** (`src/components/Service/BuyButton.tsx`)
-   - Generates unique order ID
-   - Redirects to checkout page with order and service/paymentLink IDs
+   - Calls `/api/create-payment-intent` to create session
+   - Redirects to secure checkout URL: `/checkout/o/[token]`
 
 2. **Checkout Page** (`src/app/(app-checkout)/checkout/page.tsx`)
    - Single page handling ALL states:
@@ -105,13 +105,11 @@ The Orders collection includes:
 
 ## URL Structure
 
-| URL                                              | Description                     |
-| ------------------------------------------------ | ------------------------------- |
-| `/checkout?orderId={id}&serviceId={id}`          | Standard checkout               |
-| `/checkout?orderId={id}&paymentLinkId={id}`      | Payment Link checkout           |
-| `/checkout?orderId={id}&redirect_status=succeeded` | Success state (after Cash App) |
-| `/checkout?orderId={id}&redirect_status=failed`  | Failed state                    |
-| `/checkout?orderId={id}&status=cancelled`        | User cancelled                  |
+| URL                                                     | Description             |
+| ------------------------------------------------------- | ----------------------- |
+| `/checkout/o/{checkoutToken}`                           | Secure Checkout Session |
+| `/checkout/o/{checkoutToken}?redirect_status=succeeded` | Success state           |
+| `/checkout/o/{checkoutToken}?redirect_status=failed`    | Failed state            |
 
 ## Order ID Format
 
@@ -127,37 +125,44 @@ Example: `ORD-20260130-101056-TFHUJ`
 ## Payment Flow States
 
 ### 1. Initial Load
+
 - Shows loading spinner
 - Fetches service details
 - Creates PaymentIntent via API
 - Displays payment form
 
 ### 2. Payment Form
+
 - Cash App payment button (via Stripe Elements)
 - Order ID and amount displayed
 - User clicks to pay
 
 ### 3. Cash App Redirect
+
 - Opens Cash App for approval
 - Returns to same checkout page with `redirect_status` param
 
 ### 4. Status Verification
+
 - Shows "Verifying payment status..." spinner
 - Calls Stripe.js `retrievePaymentIntent()` to verify actual status
 - Determines UI based on real PaymentIntent status
 
 ### 5. Success State
+
 - Green success UI
 - Order confirmation with copy button
 - "What Happens Next" steps
 - Provider redirect (if configured) with 5-second countdown
 
 ### 6. Failed State
+
 - Red error UI
 - "Try Again" button (clears params, shows form again)
 - "Browse Services" link
 
 ### 7. Processing State
+
 - Blue processing UI
 - Message that payment is being processed
 
@@ -165,26 +170,26 @@ Example: `ORD-20260130-101056-TFHUJ`
 
 PaymentIntents include these metadata fields:
 
-| Field                   | Value                                    |
-| ----------------------- | ---------------------------------------- |
-| serviceId               | Service document ID                      |
-| serviceName             | Service title                            |
-| quantity                | Number of units                          |
-| useCustomStripeAccount  | "false" (always)                         |
-| providerId              | Provider ID (if applicable)              |
-| providerName            | Provider name (if applicable)            |
-| externalId              | Provider's external ID (if applicable)   |
-| paymentLinkId           | Payment Link ID (if used)                |
+| Field                  | Value                                  |
+| ---------------------- | -------------------------------------- |
+| serviceId              | Service document ID                    |
+| serviceName            | Service title                          |
+| quantity               | Number of units                        |
+| useCustomStripeAccount | "false" (always)                       |
+| providerId             | Provider ID (if applicable)            |
+| providerName           | Provider name (if applicable)          |
+| externalId             | Provider's external ID (if applicable) |
+| paymentLinkId          | Payment Link ID (if used)              |
 
 ## Payment Description
 
 Visible in Stripe Dashboard:
 
-| Source          | Description Format                                    |
-| --------------- | ----------------------------------------------------- |
-| Payment Link    | `ServiceName \| PaymentLink: plink_xxx`               |
-| Direct          | `ServiceName \| Direct`                               |
-| With Provider   | `ServiceName \| Direct (ProviderName)`                |
+| Source        | Description Format                      |
+| ------------- | --------------------------------------- |
+| Payment Link  | `ServiceName \| PaymentLink: plink_xxx` |
+| Direct        | `ServiceName \| Direct`                 |
+| With Provider | `ServiceName \| Direct (ProviderName)`  |
 
 ## Idempotency
 
@@ -261,26 +266,31 @@ src/
 ## Troubleshooting
 
 ### Order ID not appearing
+
 1. Check orderId is included in PaymentIntent metadata
 2. Verify database connection
 3. Check webhook logs
 
 ### Duplicate PaymentIntents
+
 1. Verify idempotency key is stable
 2. Check orderId is passed consistently
 3. Review create-payment-intent logs
 
 ### Success UI shows for failed payment
+
 1. The checkout now verifies actual PaymentIntent status
 2. Check Stripe.js is loading correctly
 3. Verify publishable key is available
 
 ### Webhook not receiving events
+
 1. Verify webhook URL is accessible
 2. Check STRIPE_WEBHOOKS_ENDPOINT_SECRET
 3. Review Stripe webhook logs
 
 ### Orders not updating
+
 1. Check webhook handler logs
 2. Verify database permissions
 3. Ensure PaymentIntent ID is stored correctly
