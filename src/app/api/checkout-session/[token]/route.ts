@@ -118,7 +118,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       quantity: order.quantity || 1,
       serviceName: service.title,
       serviceId: service.id,
-      stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
       // Service data for the UI
       service: {
         id: service.id,

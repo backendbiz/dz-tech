@@ -295,7 +295,6 @@ export async function POST(req: Request) {
             quantity: existingOrder.quantity || 1,
             serviceName: service.title,
             serviceId: service.id,
-            stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
             provider:
               typeof existingOrder.provider === 'object' ? existingOrder.provider?.name : undefined,
             providerId:
@@ -505,7 +504,6 @@ export async function POST(req: Request) {
       quantity,
       serviceName: service.title,
       serviceId: service.id,
-      stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
       ...(providerName && { provider: providerName }),
       ...(providerId && { providerId }),
       ...(externalId && { externalId }),
