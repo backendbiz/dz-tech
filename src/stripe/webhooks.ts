@@ -273,6 +273,11 @@ async function updateOrderDisputeStatus(dispute: any) {
   const payload = await getPayloadClient()
   const paymentIntentId = dispute.payment_intent as string
 
+  console.log('[WEBHOOK:DISPUTE] Processing dispute:', dispute.id)
+  console.log('[WEBHOOK:DISPUTE] Stripe dispute status:', dispute.status)
+  console.log('[WEBHOOK:DISPUTE] Reason:', dispute.reason)
+  console.log('[WEBHOOK:DISPUTE] Amount:', dispute.amount, 'cents')
+
   try {
     // Find order by payment intent ID
     const existingOrders = await payload.find({
@@ -281,6 +286,7 @@ async function updateOrderDisputeStatus(dispute: any) {
         stripePaymentIntentId: { equals: paymentIntentId },
       },
       limit: 1,
+      depth: 1,
     })
 
     if (existingOrders.docs.length > 0) {
@@ -299,23 +305,51 @@ async function updateOrderDisputeStatus(dispute: any) {
 
       const disputeStatus = statusMap[dispute.status] || dispute.status
 
+      // Determine the correct order status based on dispute outcome
+      let orderStatus: 'disputed' | 'paid' | 'refunded' = 'disputed'
+      if (dispute.status === 'won') {
+        // Merchant won the dispute — money stays, order goes back to paid
+        orderStatus = 'paid'
+      } else if (dispute.status === 'lost') {
+        // Customer won the dispute — money returned, order becomes refunded
+        orderStatus = 'refunded'
+      }
+
       await payload.update({
         collection: 'orders',
         id: order.id,
         data: {
-          status: 'disputed', // Update main status to disputed
+          status: orderStatus,
           disputeId: dispute.id,
           disputeStatus: disputeStatus,
           disputeAmount: dispute.amount / 100, // Convert cents to dollars
           disputeReason: dispute.reason,
         },
       })
-      console.log(`Order ${order.id} updated with dispute status: ${disputeStatus}`)
+
+      console.log(
+        `[WEBHOOK:DISPUTE] ✅ Order ${order.id} updated — status: ${orderStatus}, disputeStatus: ${disputeStatus}`,
+      )
+
+      // Notify provider about dispute if applicable
+      const provider = order.provider
+      if (provider && typeof provider !== 'string' && provider.webhookUrl) {
+        try {
+          await notifyProvider(
+            provider,
+            { ...order, status: orderStatus, disputeStatus, disputeReason: dispute.reason },
+            orderStatus === 'refunded' ? 'payment_failed' : 'payment_succeeded',
+          )
+          console.log('[WEBHOOK:DISPUTE] Provider notified about dispute outcome')
+        } catch (err) {
+          console.error('[WEBHOOK:DISPUTE] Error notifying provider:', err)
+        }
+      }
     } else {
-      console.warn(`No order found for disputed payment intent: ${paymentIntentId}`)
+      console.warn(`[WEBHOOK:DISPUTE] ⚠️ No order found for payment intent: ${paymentIntentId}`)
     }
   } catch (error) {
-    console.error('Error updating order dispute status:', error)
+    console.error('[WEBHOOK:DISPUTE] ❌ Error updating order dispute status:', error)
   }
 }
 

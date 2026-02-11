@@ -60,12 +60,50 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
         const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId)
         clientSecret = paymentIntent.client_secret
 
-        // Check if Stripe status is ahead of DB (webhook lag)
+        // Check if Stripe status is ahead of DB (webhook lag or missing webhook)
+        // If so, update the DB as a fallback — don't rely solely on webhooks
         if (
           paymentIntent.status === 'succeeded' &&
           (effectiveStatus === 'pending' || effectiveStatus === 'failed')
         ) {
           effectiveStatus = 'paid'
+          // Actually persist the status update to the database
+          try {
+            await payload.update({
+              collection: 'orders',
+              id: order.id,
+              data: {
+                status: 'paid',
+              },
+            })
+            console.log(
+              `[CHECKOUT-SESSION] Order ${order.id} updated to 'paid' (fallback — Stripe confirmed succeeded but DB was '${order.status}')`,
+            )
+          } catch (updateErr) {
+            console.error('[CHECKOUT-SESSION] Failed to update order status:', updateErr)
+            // Non-fatal: still return the correct status to the UI
+          }
+        }
+
+        // Also sync failed/canceled status from Stripe
+        if (
+          (paymentIntent.status === 'canceled' ||
+            paymentIntent.status === 'requires_payment_method') &&
+          effectiveStatus === 'pending'
+        ) {
+          effectiveStatus = 'failed'
+          try {
+            await payload.update({
+              collection: 'orders',
+              id: order.id,
+              data: { status: 'failed' },
+            })
+            console.log(
+              `[CHECKOUT-SESSION] Order ${order.id} updated to 'failed' (Stripe status: ${paymentIntent.status})`,
+            )
+          } catch (updateErr) {
+            console.error('[CHECKOUT-SESSION] Failed to update order status:', updateErr)
+          }
         }
       } catch (err) {
         console.error('Failed to retrieve payment intent:', err)
