@@ -20,12 +20,11 @@
 
 This integration provides a **custom, branded checkout experience** using Stripe Payment Elements with **Cash App as the only payment method**. Key features include:
 
-- ✅ Custom checkout UI at `/checkout/o/{token}` (your domain, your branding)
-- ✅ **Cash App only** payments (no cards)
-- ✅ Token-based secure checkout URLs (128-bit unguessable tokens)
-- ✅ Webhook handling for payment and dispute events
-- ✅ Provider integration with API keys and webhooks
-- ✅ Automatic order and payment intent management
+- ✅ Custom checkout UI at `/checkout` (your domain, your branding)
+- ✅ **Cash App only** payments (via Stripe)
+- ✅ Secure API Key authentication for Providers
+- ✅ Dashboard indicators showing dispute status
+- ✅ Webhook handling for payment events
 
 > ⚠️ **Important:** Cash App payments require a **US-based Stripe account**.
 
@@ -126,18 +125,7 @@ NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 STRIPE_ENCRYPTION_KEY=your-32-character-encryption-key
 ```
 
-### Stripe Dashboard Setup
-
-1. **Create a webhook endpoint** in Stripe Dashboard:
-   - URL: `https://your-domain.com/api/stripe/webhooks`
-   - Events to listen for:
-     - `payment_intent.succeeded`
-     - `payment_intent.payment_failed`
-     - `charge.dispute.created`
-     - `charge.dispute.updated`
-     - `charge.dispute.closed`
-
-2. **Copy the webhook signing secret** (`whsec_...`) to your `.env`
+## Configuration
 
 ---
 
@@ -160,16 +148,6 @@ Checkout URLs use **cryptographically secure tokens** instead of exposing intern
 ### Encryption
 
 Sensitive keys are encrypted using **AES-256-GCM** before storing in the database.
-
-### Encryption Details
-
-| Property       | Value                                                  |
-| -------------- | ------------------------------------------------------ |
-| Algorithm      | AES-256-GCM                                            |
-| Key Derivation | SHA-256 of `STRIPE_ENCRYPTION_KEY` or `PAYLOAD_SECRET` |
-| IV             | 16 random bytes per encryption                         |
-| Auth Tag       | 16 bytes (integrity verification)                      |
-| Output         | Base64 string                                          |
 
 ---
 
@@ -307,36 +285,9 @@ export const handleDisputeClosed = async ({ event }) => {
 }
 ```
 
-### Provider Webhook Notifications
+### Webhook Verification
 
-When a payment event occurs and the order is linked to a provider, DZTech notifies the provider via their configured webhook URL with exponential backoff retry (up to 5 attempts).
-
----
-
-## Dispute Handling
-
-### Dispute Fields on Orders
-
-When a Stripe dispute is created, the following fields are updated on the Order:
-
-| Field         | Type   | Description                |
-| ------------- | ------ | -------------------------- |
-| disputeId     | text   | Stripe Dispute ID          |
-| disputeStatus | select | Current dispute status     |
-| disputeAmount | number | Amount disputed in dollars |
-| disputeReason | text   | Reason for the dispute     |
-
-### Dispute Status Values
-
-| Status                   | Description                          |
-| ------------------------ | ------------------------------------ |
-| `warning_needs_response` | Early fraud warning, needs response  |
-| `warning_under_review`   | Early fraud warning, under review    |
-| `warning_closed`         | Early fraud warning, closed          |
-| `needs_response`         | Dispute created, needs evidence      |
-| `under_review`           | Evidence submitted, under review     |
-| `won`                    | Dispute resolved in your favor       |
-| `lost`                   | Dispute resolved in customer's favor |
+The webhook endpoint verifies the request signature using the `STRIPE_WEBHOOKS_ENDPOINT_SECRET` environment variable to ensure authenticity.
 
 ---
 

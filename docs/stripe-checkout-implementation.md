@@ -28,9 +28,8 @@ Cash App Payment → Same Page (Success/Failed UI)
 ### Key Components
 
 1. **BuyButton Component** (`src/components/Service/BuyButton.tsx`)
-   - Calls `POST /api/create-payment-intent` with `serviceId`
-   - Receives a `checkoutToken` in response
-   - Redirects to `/checkout/o/{checkoutToken}`
+   - Calls `/api/create-payment-intent` to create session
+   - Redirects to secure checkout URL: `/checkout/o/[token]`
 
 2. **Checkout Page (Legacy)** (`src/app/(app-checkout)/checkout/page.tsx`)
    - Legacy checkout page using query parameters
@@ -138,27 +137,11 @@ The Orders collection includes:
 
 ## URL Structure
 
-| URL                                             | Description                               |
-| ----------------------------------------------- | ----------------------------------------- |
-| `/checkout/o/{checkoutToken}`                   | **Primary** — Token-based secure checkout |
-| `/checkout/o/{token}?redirect_status=succeeded` | Success state (after Cash App)            |
-| `/checkout/o/{token}?redirect_status=failed`    | Failed state                              |
-| `/checkout?orderId={id}&serviceId={id}`         | Legacy checkout (backwards compat)        |
-
-## Checkout Token
-
-Checkout tokens are **cryptographically secure** 32-character hex strings that replace the old pattern of exposing `serviceId` and `orderId` in the URL.
-
-- **Format**: 32 hex characters (e.g., `caa36d0b5aed3f52d2eab944d5b1bdb5`)
-- **Entropy**: 128 bits (16 random bytes via `crypto.randomBytes`)
-- **Storage**: Stored on the `checkoutToken` field of the Order document (unique, indexed)
-- **Validation**: Must match pattern `/^[a-f0-9]{32}$/`
-
-**Benefits over old URL pattern:**
-
-- No internal IDs exposed in URLs
-- Unguessable — prevents unauthorized checkout access
-- Single token resolves all session data (service, order, provider)
+| URL                                                     | Description             |
+| ------------------------------------------------------- | ----------------------- |
+| `/checkout/o/{checkoutToken}`                           | Secure Checkout Session |
+| `/checkout/o/{checkoutToken}?redirect_status=succeeded` | Success state           |
+| `/checkout/o/{checkoutToken}?redirect_status=failed`    | Failed state            |
 
 ## Order ID Format
 
@@ -219,20 +202,26 @@ Example: `ORD-20260130-101056-TFHUJ`
 
 PaymentIntents include these metadata fields:
 
-| Field      | Value                                  |
-| ---------- | -------------------------------------- |
-| serviceId  | Service document ID                    |
-| providerId | Provider ID (if applicable)            |
-| externalId | Provider's external ID (if applicable) |
+| Field                  | Value                                  |
+| ---------------------- | -------------------------------------- |
+| serviceId              | Service document ID                    |
+| serviceName            | Service title                          |
+| quantity               | Number of units                        |
+| useCustomStripeAccount | "false" (always)                       |
+| providerId             | Provider ID (if applicable)            |
+| providerName           | Provider name (if applicable)          |
+| externalId             | Provider's external ID (if applicable) |
+| paymentLinkId          | Payment Link ID (if used)              |
 
 ## Payment Description
 
 Visible in Stripe Dashboard:
 
-| Source        | Description Format                     |
-| ------------- | -------------------------------------- |
-| Direct        | `ServiceName \| Direct`                |
-| With Provider | `ServiceName \| Direct (ProviderName)` |
+| Source        | Description Format                      |
+| ------------- | --------------------------------------- |
+| Payment Link  | `ServiceName \| PaymentLink: plink_xxx` |
+| Direct        | `ServiceName \| Direct`                 |
+| With Provider | `ServiceName \| Direct (ProviderName)`  |
 
 ## Idempotency
 
@@ -321,11 +310,11 @@ src/
 
 ## Troubleshooting
 
-### Checkout token not resolving
+### Order ID not appearing
 
-1. Check token format is valid (32 hex chars)
-2. Verify order exists with matching `checkoutToken` field
-3. Check database connection
+1. Check orderId is included in PaymentIntent metadata
+2. Verify database connection
+3. Check webhook logs
 
 ### Duplicate PaymentIntents
 

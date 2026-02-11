@@ -55,7 +55,7 @@ Provider Backend                DZTech                      User
       │                            │                          │
       │  Redirect user ───────────────────────────────────────►│
       │                            │                          │
-      │                            │  /checkout/o/{token}     │
+      │                            │  /checkout/o/[token]     │
       │                            │ ◄─────────────────────────│
       │                            │                          │
       │                            │  Cash App Payment        │
@@ -160,7 +160,7 @@ Creates a payment session and returns a secure checkout URL.
 
 ```json
 {
-  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "checkoutUrl": "https://dztech.shop/checkout/o/tok_123...",
   "orderId": "65b...",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
   "amount": 100
@@ -185,8 +185,8 @@ Creates a payment session and returns a secure checkout URL.
 
 ### What Users See
 
-1. **Checkout Page** (`/checkout/o/{checkoutToken}`)
-   - Service details displayed
+1. **Checkout Page** (`/checkout/o/[token]`)
+   - Order ID displayed
    - Amount to pay
    - Cash App payment button
 
@@ -375,7 +375,7 @@ app.post('/api/webhooks/dztech', async (req, res) => {
     })
 
     // Grant credits/access to user
-    await grantCredits(order.userId, order.quantity)
+    await grantCredits(order.userId, quantity)
 
     // Send confirmation
     await sendConfirmationEmail(order.userId, { amount })
@@ -415,16 +415,21 @@ export default function SuccessPage() {
 
 Payments made through DZTech include helpful metadata visible in Stripe:
 
-| Metadata Field | Description                   |
-| -------------- | ----------------------------- |
-| `serviceId`    | DZTech service ID             |
-| `providerId`   | Provider's ID (if applicable) |
-| `externalId`   | Provider's internal order ID  |
+| Metadata Field  | Description                            |
+| --------------- | -------------------------------------- |
+| `serviceId`     | DZTech service ID                      |
+| `serviceName`   | Service name (e.g., "Premium Credits") |
+| `quantity`      | Number of units purchased              |
+| `providerId`    | Provider's ID (if applicable)          |
+| `providerName`  | Provider's name (if applicable)        |
+| `externalId`    | Provider's internal order ID           |
+| `paymentLinkId` | Stripe Payment Link ID (if used)       |
 
 **Payment Description Format**:
 
-- Direct: `ServiceName | Direct`
-- With Provider: `ServiceName | Direct (ProviderName)`
+- With Payment Link: `Premium Credits | PaymentLink: plink_xxx`
+- Direct/API: `Premium Credits | Direct`
+- With Provider: `Premium Credits | Direct (Bitloader)`
 
 ---
 
