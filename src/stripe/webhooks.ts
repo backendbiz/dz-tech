@@ -93,10 +93,27 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
   const paymentIntent = event.data.object
   const { serviceId, providerId, externalId } = paymentIntent.metadata || {}
 
+  console.log('[WEBHOOK:SUCCESS] Processing payment_intent.succeeded')
+  console.log('[WEBHOOK:SUCCESS] PaymentIntent ID:', paymentIntent.id)
+  console.log('[WEBHOOK:SUCCESS] Amount:', paymentIntent.amount, 'cents')
+  console.log(
+    '[WEBHOOK:SUCCESS] Metadata - serviceId:',
+    serviceId,
+    'providerId:',
+    providerId,
+    'externalId:',
+    externalId,
+  )
+
   const payload = await getPayloadClient()
+  console.log('[WEBHOOK:SUCCESS] Payload client obtained')
 
   try {
     // Find order by payment intent ID
+    console.log(
+      '[WEBHOOK:SUCCESS] Searching for order with stripePaymentIntentId:',
+      paymentIntent.id,
+    )
     const existingOrders = await payload.find({
       collection: 'orders',
       where: {
@@ -105,23 +122,40 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
       depth: 1, // Populate provider and service
     })
 
+    console.log('[WEBHOOK:SUCCESS] Found', existingOrders.docs.length, 'matching orders')
+
     let order: Order | null = null
 
     if (existingOrders.docs.length > 0) {
       const existingOrder = existingOrders.docs[0]
+      console.log(
+        '[WEBHOOK:SUCCESS] Existing order found:',
+        existingOrder.id,
+        'current status:',
+        existingOrder.status,
+      )
 
       // Update existing order to paid
-      await payload.update({
+      const updatedOrder = await payload.update({
         collection: 'orders',
         id: existingOrder.id,
         data: {
           status: 'paid',
         },
       })
-      console.log(`Order ${existingOrder.id} marked as paid via PaymentIntent`)
+      console.log(
+        '[WEBHOOK:SUCCESS] ✅ Order',
+        existingOrder.id,
+        'updated to status:',
+        updatedOrder.status,
+      )
 
       order = { ...existingOrder, status: 'paid' }
     } else if (serviceId) {
+      console.log(
+        '[WEBHOOK:SUCCESS] No existing order found, creating new order for serviceId:',
+        serviceId,
+      )
       // Create new order if it doesn't exist
       const newOrder = await payload.create({
         collection: 'orders',
@@ -134,14 +168,18 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
           ...(externalId && { externalId }),
         },
       })
-      console.log(`Order ${newOrder.id} created for PaymentIntent ${paymentIntent.id}`)
+      console.log('[WEBHOOK:SUCCESS] ✅ New order created:', newOrder.id)
 
       order = newOrder
+    } else {
+      console.warn(
+        '[WEBHOOK:SUCCESS] ⚠️ No order found AND no serviceId in metadata - cannot process this event',
+      )
     }
 
     // Notify provider if applicable
     if (order && providerId) {
-      // Fetch provider to get webhook URL
+      console.log('[WEBHOOK:SUCCESS] Notifying provider:', providerId)
       try {
         const provider = await payload.findByID({
           collection: 'providers',
@@ -149,13 +187,15 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
         })
         if (provider && provider.webhookUrl) {
           await notifyProvider(provider, order, 'payment_succeeded')
+        } else {
+          console.log('[WEBHOOK:SUCCESS] Provider has no webhookUrl configured')
         }
       } catch (err) {
-        console.error('Error fetching provider for notification:', err)
+        console.error('[WEBHOOK:SUCCESS] Error fetching provider for notification:', err)
       }
     }
   } catch (error) {
-    console.error('Error updating order from PaymentIntent:', error)
+    console.error('[WEBHOOK:SUCCESS] ❌ Error updating order from PaymentIntent:', error)
   }
 }
 
@@ -165,10 +205,17 @@ export const paymentIntentFailed = async ({ event }: any) => {
   const paymentIntent = event.data.object
   const { providerId } = paymentIntent.metadata || {}
 
+  console.log('[WEBHOOK:FAILED] Processing payment_intent.payment_failed')
+  console.log('[WEBHOOK:FAILED] PaymentIntent ID:', paymentIntent.id)
+
   const payload = await getPayloadClient()
 
   try {
     // Find order by payment intent ID
+    console.log(
+      '[WEBHOOK:FAILED] Searching for order with stripePaymentIntentId:',
+      paymentIntent.id,
+    )
     const existingOrders = await payload.find({
       collection: 'orders',
       where: {
@@ -177,8 +224,17 @@ export const paymentIntentFailed = async ({ event }: any) => {
       depth: 1, // Populate provider and service
     })
 
+    console.log('[WEBHOOK:FAILED] Found', existingOrders.docs.length, 'matching orders')
+
     if (existingOrders.docs.length > 0) {
       const existingOrder = existingOrders.docs[0]
+      console.log(
+        '[WEBHOOK:FAILED] Updating order',
+        existingOrder.id,
+        'from status:',
+        existingOrder.status,
+        'to: failed',
+      )
 
       await payload.update({
         collection: 'orders',
@@ -187,7 +243,7 @@ export const paymentIntentFailed = async ({ event }: any) => {
           status: 'failed',
         },
       })
-      console.log(`Order ${existingOrder.id} marked as failed`)
+      console.log('[WEBHOOK:FAILED] ✅ Order', existingOrder.id, 'marked as failed')
 
       // Notify provider if applicable
       if (providerId) {
@@ -200,12 +256,14 @@ export const paymentIntentFailed = async ({ event }: any) => {
             await notifyProvider(provider, { ...existingOrder, status: 'failed' }, 'payment_failed')
           }
         } catch (err) {
-          console.error('Error fetching provider for notification:', err)
+          console.error('[WEBHOOK:FAILED] Error fetching provider for notification:', err)
         }
       }
+    } else {
+      console.warn('[WEBHOOK:FAILED] ⚠️ No order found for PaymentIntent:', paymentIntent.id)
     }
   } catch (error) {
-    console.error('Error updating failed order:', error)
+    console.error('[WEBHOOK:FAILED] ❌ Error updating failed order:', error)
   }
 }
 
