@@ -437,7 +437,7 @@ export async function POST(req: Request) {
       idempotencyKey = `pi_${service.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`
     }
 
-    const paymentDescription = `${service.title} | Direct${providerName ? ` (${providerName})` : ''}`
+    const paymentDescription = `${service.title}`
 
     // Create a PaymentIntent using the service's Stripe account
     // Note: Cash App is only available for US-based Stripe accounts
