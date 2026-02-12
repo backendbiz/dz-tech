@@ -1,16 +1,29 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { CheckoutClient } from '@/components/checkout/CheckoutClient'
+import { getSiteSettings } from '@/lib/queries/globals'
 
 export const metadata: Metadata = {
   title: 'Checkout | DZTech',
   description: 'Complete your purchase securely with our custom checkout experience.',
 }
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const siteSettings = await getSiteSettings()
+
+  const logo =
+    siteSettings.logo && typeof siteSettings.logo === 'object' && 'url' in siteSettings.logo
+      ? {
+          url: siteSettings.logo.url,
+          alt: siteSettings.logo.alt || siteSettings.siteName,
+          width: siteSettings.logo.width,
+          height: siteSettings.logo.height,
+        }
+      : null
+
   return (
     <Suspense fallback={<CheckoutLoading />}>
-      <CheckoutClient />
+      <CheckoutClient siteName={siteSettings.siteName} logo={logo} />
     </Suspense>
   )
 }

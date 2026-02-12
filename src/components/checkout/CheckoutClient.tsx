@@ -1,9 +1,9 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { Icon, Card } from '@/components/ui'
-import type { IconName } from '@/components/ui'
+import Image from 'next/image'
 import Link from 'next/link'
 import { StripeProvider } from '@/components/checkout/StripeProvider'
 import { CashAppPaymentForm } from '@/components/checkout/CashAppPaymentForm'
@@ -13,336 +13,239 @@ interface ServiceData {
   title: string
   description: string
   price: number
-  priceUnit?: string
-  icon?: IconName
   slug: string
 }
-
-interface CheckoutState {
-  loading: boolean
-  error: string | null
-  errorCode: string | null
-  service: ServiceData | null
-  clientSecret: string | null
-  paymentOrderId: string | null
-  stripePublishableKey: string | null
-  provider: string | null
-  successRedirectUrl: string | null
-  cancelRedirectUrl: string | null
-}
-
-// Payment result status from Stripe redirect
-type PaymentResultStatus = 'succeeded' | 'processing' | 'failed' | null
 
 interface PaymentData {
   clientSecret: string
   orderId: string
   status?: 'paid' | 'failed' | 'disputed' | 'refunded' | 'pending'
-  checkoutUrl?: string
   amount: number
-  quantity?: number
-  serviceName?: string
-  serviceId: string
   stripePublishableKey?: string
   provider?: string
-  providerId?: string
   successRedirectUrl?: string
   cancelRedirectUrl?: string
 }
 
-/**
- * Replace {orderId} placeholder in URL with actual orderId
- */
-function buildRedirectUrl(templateUrl: string, orderId: string): string {
-  return templateUrl.replace(/{orderId}/g, orderId)
+type PaymentStatus = 'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
+
+interface CheckoutClientProps {
+  siteName?: string
+  logo?: {
+    url?: string | null
+    alt?: string | null
+    width?: number | null
+    height?: number | null
+  } | null
 }
 
-export function CheckoutClient() {
+function buildRedirectUrl(template: string, orderId: string) {
+  return template.replace(/{orderId}/g, orderId)
+}
+
+export function CheckoutClient({ siteName = 'DZTech', logo }: CheckoutClientProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const orderId = searchParams.get('orderId')
   const serviceId = searchParams.get('serviceId')
   const status = searchParams.get('status')
 
   // Stripe redirect params (added after Cash App payment)
-  const redirectStatus = searchParams.get('redirect_status') as PaymentResultStatus
+  const redirectStatus = searchParams.get('redirect_status') as PaymentStatus
   const paymentIntentParam = searchParams.get('payment_intent')
   const paymentIntentClientSecret = searchParams.get('payment_intent_client_secret')
 
-  const [state, setState] = useState<CheckoutState>({
-    loading: true,
-    error: null,
-    errorCode: null,
-    service: null,
-    clientSecret: null,
-    paymentOrderId: null,
-    stripePublishableKey: null,
-    provider: null,
-    successRedirectUrl: null,
-    cancelRedirectUrl: null,
-  })
-
-  const [copied, setCopied] = useState(false)
+  const [service, setService] = useState<ServiceData | null>(null)
+  const [payment, setPayment] = useState<PaymentData | null>(null)
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
   const [redirectCountdown, setRedirectCountdown] = useState(5)
-  // Actual payment status (verified from PaymentIntent, not just redirect_status)
-  const [paymentStatus, setPaymentStatus] = useState<
-    'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
-  >(null)
+  const [copied, setCopied] = useState(false)
 
-  // Fetch service details and create payment intent
-  // Note: Duplicate calls are safely handled by Stripe's idempotency key on the backend
+  const displayOrderId = payment?.orderId ?? orderId
+
   useEffect(() => {
-    async function initializeCheckout() {
-      if (!serviceId) {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: 'No service selected. Please go back and select a service.',
-        }))
-        return
-      }
+    if (!serviceId) {
+      setLoading(false)
+      setError('No service selected. Please go back and select a service.')
+      return
+    }
 
+    const init = async () => {
       try {
-        // === Standard Service ID Flow ===
-        // 1. First, fetch service details
-        const serviceResponse = await fetch(`/api/services/${serviceId}`)
-        if (!serviceResponse.ok) {
-          throw new Error('Service not found')
-        }
-        const currentService: ServiceData = await serviceResponse.json()
-
-        // 2. Then, create a payment intent
-        const paymentResponse = await fetch('/api/create-payment-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            serviceId,
-            orderId,
+        const [serviceRes, paymentRes] = await Promise.all([
+          fetch(`/api/services/${serviceId}`),
+          fetch('/api/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serviceId, orderId }),
           }),
-        })
+        ])
 
-        if (!paymentResponse.ok) {
-          const errorData = await paymentResponse.json()
-          const error = new Error(errorData.error || 'Failed to initialize payment') as Error & {
+        if (!serviceRes.ok) throw new Error('Service not found')
+        const serviceData: ServiceData = await serviceRes.json()
+
+        if (!paymentRes.ok) {
+          const err = await paymentRes.json()
+          const e = new Error(err.error || 'Failed to initialize payment') as Error & {
             code?: string
           }
-          error.code = errorData.errorCode
-          throw error
+          e.code = err.errorCode
+          throw e
         }
+        const paymentData: PaymentData = await paymentRes.json()
 
-        const paymentData: PaymentData = await paymentResponse.json()
-
-        // Check if order is already processed
-        if (paymentData.status === 'paid') {
-          setPaymentStatus('succeeded')
-        } else if (paymentData.status === 'failed') {
-          setPaymentStatus('failed')
-        } else if (paymentData.status === 'disputed' || paymentData.status === 'refunded') {
-          setPaymentStatus('disputed')
+        // Map payment status
+        const statusMap: Record<string, PaymentStatus> = {
+          paid: 'succeeded',
+          failed: 'failed',
+          disputed: 'disputed',
+          refunded: 'disputed',
         }
+        if (paymentData.status) setPaymentStatus(statusMap[paymentData.status] ?? null)
 
-        // Common: Update service price with actual amount from intent (handles overrides/links)
-        if (paymentData.amount) {
-          currentService.price = paymentData.amount
-        }
+        if (paymentData.amount) serviceData.price = paymentData.amount
 
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          service: currentService,
-          clientSecret: paymentData.clientSecret,
-          paymentOrderId: paymentData.orderId,
-          stripePublishableKey: paymentData.stripePublishableKey || null,
-          provider: paymentData.provider || null,
-          successRedirectUrl: paymentData.successRedirectUrl || null,
-          cancelRedirectUrl: paymentData.cancelRedirectUrl || null,
-        }))
-      } catch (error) {
-        console.error('Checkout initialization error:', error)
-        const errorWithCode = error as Error & { code?: string }
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Failed to initialize checkout',
-          errorCode: errorWithCode.code || null,
-        }))
+        setService(serviceData)
+        setPayment(paymentData)
+      } catch (e) {
+        const err = e as Error & { code?: string }
+        setError(err.message)
+        setErrorCode(err.code ?? null)
+      } finally {
+        setLoading(false)
       }
     }
 
-    initializeCheckout()
+    init()
   }, [serviceId, orderId])
 
   // Store order ID and provider info in localStorage
   useEffect(() => {
-    if (state.paymentOrderId && state.service) {
-      const orders = JSON.parse(localStorage.getItem('dztech_orders') || '[]')
-      const existingOrder = orders.find(
-        (o: { orderId: string }) => o.orderId === state.paymentOrderId,
-      )
-      if (!existingOrder) {
-        orders.push({
-          orderId: state.paymentOrderId,
-          serviceId,
-          serviceName: state.service.title,
-          price: state.service.price,
-          createdAt: new Date().toISOString(),
-          status: 'pending',
-          // Store provider info for redirect on success page
-          provider: state.provider,
-          successRedirectUrl: state.successRedirectUrl,
-          cancelRedirectUrl: state.cancelRedirectUrl,
-        })
-        localStorage.setItem('dztech_orders', JSON.stringify(orders))
-      }
+    if (!payment || !service) return
+    const orders = JSON.parse(localStorage.getItem('dztech_orders') || '[]')
+    if (!orders.find((o: { orderId: string }) => o.orderId === payment.orderId)) {
+      orders.push({
+        orderId: payment.orderId,
+        serviceId,
+        serviceName: service.title,
+        price: service.price,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+        provider: payment.provider,
+        successRedirectUrl: payment.successRedirectUrl,
+      })
+      localStorage.setItem('dztech_orders', JSON.stringify(orders))
     }
-  }, [
-    state.paymentOrderId,
-    serviceId,
-    state.service,
-    state.provider,
-    state.successRedirectUrl,
-    state.cancelRedirectUrl,
-  ])
+  }, [payment, service, serviceId])
 
-  // Verify actual PaymentIntent status when returning from Cash App redirect
+  // Verify payment status from Stripe redirect
   useEffect(() => {
-    async function verifyPaymentStatus() {
-      // Only run if we have redirect params indicating a return from payment
-      if (!paymentIntentParam || !paymentIntentClientSecret) return
+    if (!paymentIntentParam || !paymentIntentClientSecret || !payment?.stripePublishableKey) {
+      // Fallback to redirect_status if no Stripe verification possible
+      if (redirectStatus) {
+        setPaymentStatus(
+          redirectStatus === 'succeeded'
+            ? 'succeeded'
+            : redirectStatus === 'failed'
+              ? 'failed'
+              : 'pending',
+        )
+      }
+      return
+    }
 
+    const verify = async () => {
       try {
-        // Dynamically import Stripe to verify payment status
         const { loadStripe } = await import('@stripe/stripe-js')
-        const publishableKey =
-          state.stripePublishableKey || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        const stripe = await loadStripe(payment.stripePublishableKey!)
+        if (!stripe) throw new Error('Failed to load Stripe')
 
-        if (!publishableKey) {
-          console.error('No Stripe publishable key available')
-          // Fall back to redirect_status
-          setPaymentStatus(
-            redirectStatus === 'succeeded'
-              ? 'succeeded'
-              : redirectStatus === 'failed'
-                ? 'failed'
-                : 'pending',
-          )
-          return
-        }
-
-        const stripe = await loadStripe(publishableKey)
-        if (!stripe) {
-          console.error('Failed to load Stripe')
-          setPaymentStatus(
-            redirectStatus === 'succeeded'
-              ? 'succeeded'
-              : redirectStatus === 'failed'
-                ? 'failed'
-                : 'pending',
-          )
-          return
-        }
-
-        // Retrieve the actual PaymentIntent status
         const { paymentIntent, error } =
           await stripe.retrievePaymentIntent(paymentIntentClientSecret)
+        if (error) throw error
 
-        if (error) {
-          console.error('Error retrieving PaymentIntent:', error)
-          setPaymentStatus('failed')
-          return
+        const statusMap: Record<string, PaymentStatus> = {
+          succeeded: 'succeeded',
+          processing: 'processing',
+          requires_payment_method: 'failed',
+          requires_confirmation: 'failed',
+          requires_action: 'failed',
+          canceled: 'failed',
         }
-
-        if (paymentIntent) {
-          console.log('PaymentIntent status:', paymentIntent.status)
-          switch (paymentIntent.status) {
-            case 'succeeded':
-              setPaymentStatus('succeeded')
-              break
-            case 'processing':
-              setPaymentStatus('processing')
-              break
-            case 'requires_payment_method':
-            case 'requires_confirmation':
-            case 'requires_action':
-            case 'canceled':
-              setPaymentStatus('failed')
-              break
-            default:
-              setPaymentStatus('pending')
-          }
-        }
-      } catch (err) {
-        console.error('Error verifying payment status:', err)
-        // Fall back to redirect_status
+        setPaymentStatus(statusMap[paymentIntent!.status] ?? 'pending')
+      } catch {
         setPaymentStatus(redirectStatus === 'succeeded' ? 'succeeded' : 'failed')
       }
     }
 
-    verifyPaymentStatus()
-  }, [paymentIntentParam, paymentIntentClientSecret, redirectStatus, state.stripePublishableKey])
+    verify()
+  }, [paymentIntentParam, paymentIntentClientSecret, redirectStatus, payment?.stripePublishableKey])
 
-  // Handle payment success - update localStorage and check for provider redirect
+  // Handle success - update localStorage and check for redirect
   useEffect(() => {
-    if (paymentStatus === 'succeeded' && orderId) {
-      const orders = JSON.parse(localStorage.getItem('dztech_orders') || '[]')
-      const order = orders.find((o: { orderId: string }) => o.orderId === orderId)
-      if (order) {
-        order.status = 'paid'
-        order.paidAt = new Date().toISOString()
-        localStorage.setItem('dztech_orders', JSON.stringify(orders))
+    if (paymentStatus !== 'succeeded' || !orderId) return
 
-        // Check if this is a provider payment with a redirect URL
-        if (order.successRedirectUrl) {
-          setRedirecting(true)
-          // Update state with provider info for the UI
-          setState((prev) => ({
-            ...prev,
-            provider: order.provider,
-            successRedirectUrl: order.successRedirectUrl,
-          }))
-        }
-      }
+    const orders = JSON.parse(localStorage.getItem('dztech_orders') || '[]')
+    const order = orders.find((o: { orderId: string }) => o.orderId === orderId)
+    if (order) {
+      order.status = 'paid'
+      order.paidAt = new Date().toISOString()
+      localStorage.setItem('dztech_orders', JSON.stringify(orders))
+      if (order.successRedirectUrl) setRedirecting(true)
     }
-  }, [redirectStatus, orderId, paymentStatus])
+  }, [paymentStatus, orderId])
 
-  // Handle provider redirect with countdown
+  // Countdown and redirect
   useEffect(() => {
-    if (!redirecting || !state.successRedirectUrl || !orderId) return
+    if (!redirecting || !payment?.successRedirectUrl || !orderId) return
 
-    const countdownInterval = setInterval(() => {
-      setRedirectCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval)
-          const redirectUrl = buildRedirectUrl(state.successRedirectUrl!, orderId)
-          window.location.href = redirectUrl
-          return 0
+    const interval = setInterval(() => {
+      setRedirectCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval)
+          window.location.href = buildRedirectUrl(payment.successRedirectUrl!, orderId)
         }
-        return prev - 1
+        return c - 1
       })
     }, 1000)
 
-    return () => clearInterval(countdownInterval)
-  }, [redirecting, state.successRedirectUrl, orderId])
+    return () => clearInterval(interval)
+  }, [redirecting, payment?.successRedirectUrl, orderId])
 
   const handleRedirectNow = useCallback(() => {
-    if (state.successRedirectUrl && orderId) {
-      const redirectUrl = buildRedirectUrl(state.successRedirectUrl, orderId)
-      window.location.href = redirectUrl
+    if (payment?.successRedirectUrl && orderId) {
+      window.location.href = buildRedirectUrl(payment.successRedirectUrl, orderId)
     }
-  }, [state.successRedirectUrl, orderId])
+  }, [payment?.successRedirectUrl, orderId])
+
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  const handleCancel = useCallback(() => {
+    setIsCancelling(true)
+
+    // If there's a cancelRedirectUrl from provider (e.g., Bitloader), use it
+    if (payment?.cancelRedirectUrl) {
+      window.location.href = payment.cancelRedirectUrl
+      return
+    }
+    // Otherwise go back to service page
+    if (service?.slug) {
+      router.push(`/services/${service.slug}`)
+    } else {
+      router.push('/services')
+    }
+  }, [router, service?.slug, payment?.cancelRedirectUrl])
 
   const copyOrderId = useCallback(() => {
-    const orderIdToCopy = state.paymentOrderId || orderId
-    if (orderIdToCopy) {
-      navigator.clipboard.writeText(orderIdToCopy)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }, [state.paymentOrderId, orderId])
-
-  const displayOrderId = state.paymentOrderId || orderId
+    if (!displayOrderId) return
+    navigator.clipboard.writeText(displayOrderId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [displayOrderId])
 
   // Show cancelled status
   if (status === 'cancelled') {
@@ -393,7 +296,7 @@ export function CheckoutClient() {
   }
 
   // Show payment success with provider redirect
-  if (paymentStatus === 'succeeded' && redirecting && state.provider) {
+  if (paymentStatus === 'succeeded' && redirecting && payment?.provider) {
     return (
       <div className="min-h-screen bg-linear-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
         <Card
@@ -426,7 +329,7 @@ export function CheckoutClient() {
           {/* Redirect message */}
           <div className="mb-6">
             <p className="text-gray-600 mb-2">
-              Redirecting you back to <span className="font-semibold">{state.provider}</span>...
+              Redirecting you back to <span className="font-semibold">{payment?.provider}</span>...
             </p>
             <div className="flex items-center justify-center gap-2 text-gray-500">
               <div className="h-5 w-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -438,11 +341,11 @@ export function CheckoutClient() {
             onClick={handleRedirectNow}
             className="w-full py-3 px-4 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
           >
-            Continue to {state.provider} Now
+            Continue to {payment?.provider} Now
           </button>
 
           <p className="mt-4 text-xs text-gray-400">
-            Powered by <span className="font-medium text-blue-500">DZTech</span>
+            Powered by <span className="font-medium text-blue-500">{siteName}</span>
           </p>
         </Card>
       </div>
@@ -489,7 +392,7 @@ export function CheckoutClient() {
           </Card>
 
           <div className="mt-6 text-center text-xs text-gray-400">
-            <p>© 2026 DZTech. All rights reserved.</p>
+            <p>© 2026 {siteName}. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -573,7 +476,7 @@ export function CheckoutClient() {
   }
 
   // Loading state
-  if (state.loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -623,7 +526,7 @@ export function CheckoutClient() {
   }
 
   // Error state - Cash App Unavailable (special UI)
-  if (state.errorCode === 'CASHAPP_UNAVAILABLE') {
+  if (errorCode === 'CASHAPP_UNAVAILABLE') {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card
@@ -662,7 +565,7 @@ export function CheckoutClient() {
   }
 
   // Generic error state
-  if (state.error) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card
@@ -673,7 +576,7 @@ export function CheckoutClient() {
             <Icon name="alert-circle" className="h-8 w-8 text-red-600" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-3">Something went wrong</h1>
-          <p className="text-gray-600 mb-6 text-sm">{state.error}</p>
+          <p className="text-gray-600 mb-6 text-sm">{error}</p>
           <Link
             href="/services"
             className="block w-full py-3 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors text-center"
@@ -685,7 +588,7 @@ export function CheckoutClient() {
     )
   }
 
-  const service = state.service!
+  if (!service || !payment) return null
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -694,9 +597,23 @@ export function CheckoutClient() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="text-center pt-8 pb-4 px-6">
-            <div className="inline-flex items-center gap-2 mb-2">
-              <div className="text-3xl">🔐</div>
-              <span className="text-2xl font-bold text-gray-900">DZTech</span>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {logo?.url ? (
+                <div className="relative h-12 w-auto min-w-[120px]">
+                  <Image
+                    src={logo.url}
+                    alt={logo.alt || siteName}
+                    width={logo.width || 120}
+                    height={logo.height || 48}
+                    className="h-12 w-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2">
+                  <div className="text-3xl">🔐</div>
+                  <span className="text-2xl font-bold text-gray-900">{siteName}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -735,14 +652,16 @@ export function CheckoutClient() {
 
           {/* Payment Form */}
           <div className="px-6 pb-8">
-            {state.clientSecret ? (
+            {payment?.clientSecret ? (
               <StripeProvider
-                clientSecret={state.clientSecret}
-                publishableKey={state.stripePublishableKey || undefined}
+                clientSecret={payment.clientSecret}
+                publishableKey={payment.stripePublishableKey}
               >
                 <CashAppPaymentForm
-                  orderId={state.paymentOrderId || displayOrderId || ''}
+                  orderId={payment.orderId}
                   amount={service.price}
+                  onCancel={handleCancel}
+                  isCancelling={isCancelling}
                 />
               </StripeProvider>
             ) : (
@@ -754,17 +673,6 @@ export function CheckoutClient() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Back Link */}
-        <div className="mt-6 text-center">
-          <Link
-            href={`/services/${service.slug}`}
-            className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1"
-          >
-            <Icon name="arrow-left" className="h-4 w-4" />
-            Back to Service Details
-          </Link>
         </div>
       </div>
     </div>
