@@ -16,7 +16,7 @@ Bitloader's backend creates a payment order by calling the DZTech API.
 
 **Request:**
 ```bash
-POST /api/create-payment-intent
+POST /api/v1/create-payment-intent
 Content-Type: application/json
 
 {
@@ -73,7 +73,7 @@ The user completes the payment using Cash App.
 Stripe sends a webhook to DZTech when the payment is confirmed.
 
 ```
-Stripe → POST /api/stripe/webhooks
+Stripe → POST /api/v1/stripe/webhooks
 Event: payment_intent.succeeded
 ```
 
@@ -228,7 +228,7 @@ If a customer disputes a charge:
 
 ### Create Payment Intent
 
-**Endpoint:** `POST /api/create-payment-intent`
+**Endpoint:** `POST /api/v1/create-payment-intent`
 
 **Headers:**
 ```
@@ -279,7 +279,7 @@ X-DZTech-Webhook: payment-notification
 ### Test with cURL
 
 ```bash
-curl -X POST https://dztech.shop/api/create-payment-intent \
+curl -X POST https://dztech.shop/api/v1/create-payment-intent \
   -H "Content-Type: application/json" \
   -d '{
     "apiKey": "YOUR_API_KEY",

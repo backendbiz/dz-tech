@@ -9,13 +9,13 @@ This document describes the custom Stripe checkout implementation for DZTech. Th
 ### Flow Diagram
 
 ```
-User clicks "Buy" → POST /api/create-payment-intent → Get checkoutToken
+User clicks "Buy" → POST /api/v1/create-payment-intent → Get checkoutToken
       │
       ▼
 Redirect to /checkout/o/{checkoutToken}
       │
       ▼
-GET /api/checkout-session/{token} → Resolve order + Stripe PaymentIntent
+GET /api/v1/checkout-session/{token} → Resolve order + Stripe PaymentIntent
       │
       ▼
 Cash App Payment → Same Page (Success/Failed UI)
@@ -28,7 +28,7 @@ Cash App Payment → Same Page (Success/Failed UI)
 ### Key Components
 
 1. **BuyButton Component** (`src/components/Service/BuyButton.tsx`)
-   - Calls `/api/create-payment-intent` to create session
+   - Calls `/api/v1/create-payment-intent` to create session
    - Redirects to secure checkout URL: `/checkout/o/[token]`
 
 2. **Checkout Page (Legacy)** (`src/app/(app-checkout)/checkout/page.tsx`)
@@ -38,7 +38,7 @@ Cash App Payment → Same Page (Success/Failed UI)
 3. **Checkout Token Page** (`src/app/(app-checkout)/checkout/o/[token]/page.tsx`)
    - **Primary checkout page** using token-based URLs
    - Uses `CheckoutTokenClient` component
-   - Token is resolved via `GET /api/checkout-session/{token}`
+   - Token is resolved via `GET /api/v1/checkout-session/{token}`
 
 4. **CheckoutTokenClient** (`src/components/checkout/CheckoutTokenClient.tsx`)
    - Client component with full state management
@@ -54,13 +54,13 @@ Cash App Payment → Same Page (Success/Failed UI)
    - Stripe Elements integration for Cash App Pay
    - Returns to same checkout page after payment
 
-7. **Create Payment Intent API** (`src/app/api/create-payment-intent/route.ts`)
+7. **Create Payment Intent API** (`src/app/api/v1/create-payment-intent/route.ts`)
    - Creates Stripe PaymentIntent
    - Creates pending Order in database with a `checkoutToken`
    - Supports both `serviceId` (direct) and `apiKey` (provider) flows
    - Returns secure `checkoutUrl` with token
 
-8. **Checkout Session API** (`src/app/api/checkout-session/[token]/route.ts`)
+8. **Checkout Session API** (`src/app/api/v1/checkout-session/[token]/route.ts`)
    - Resolves a checkout token to full session data
    - Returns service details, client secret, and provider info
    - Validates token format before database lookup
@@ -100,7 +100,7 @@ NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 
 2. **Configure Webhooks**
    - Go to Stripe Dashboard > Developers > Webhooks
-   - Add endpoint: `https://your-domain.com/api/stripe/webhooks`
+   - Add endpoint: `https://your-domain.com/api/v1/stripe/webhooks`
    - Select events:
      - `payment_intent.succeeded`
      - `payment_intent.payment_failed`
@@ -159,7 +159,7 @@ Example: `ORD-20260130-101056-TFHUJ`
 ### 1. Initial Load
 
 - Shows loading spinner
-- Calls `GET /api/checkout-session/{token}` to resolve checkout data
+- Calls `GET /api/v1/checkout-session/{token}` to resolve checkout data
 - Receives service details, client secret, and provider info
 - Displays payment form
 

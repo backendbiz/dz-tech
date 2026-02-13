@@ -153,7 +153,7 @@ Sensitive keys are encrypted using **AES-256-GCM** before storing in the databas
 
 ## API Reference
 
-### POST `/api/create-payment-intent`
+### POST `/api/v1/create-payment-intent`
 
 Creates a Payment Intent and pending Order. Returns a secure checkout URL.
 
@@ -202,7 +202,7 @@ Creates a Payment Intent and pending Order. Returns a secure checkout URL.
 }
 ```
 
-### GET `/api/checkout-session/[token]`
+### GET `/api/v1/checkout-session/[token]`
 
 Resolves a checkout token to the full checkout session data.
 
@@ -229,7 +229,7 @@ Resolves a checkout token to the full checkout session data.
 }
 ```
 
-### POST `/api/stripe/webhooks`
+### POST `/api/v1/stripe/webhooks`
 
 Handles incoming Stripe webhook events.
 

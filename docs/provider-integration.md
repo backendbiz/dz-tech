@@ -46,7 +46,7 @@ Each provider:
 ```
 Provider Backend                DZTech                      User
       │                            │                          │
-      │  POST /api/create-payment-intent                      │
+      │  POST /api/v1/create-payment-intent                      │
       │  { apiKey, externalId, amount }                       │
       │ ──────────────────────────►│                          │
       │                            │                          │
@@ -77,7 +77,7 @@ Provider Backend                DZTech                      User
 User clicks "Buy Now" on DZTech Service Page
       │
       ▼
-POST /api/create-payment-intent { serviceId }
+POST /api/v1/create-payment-intent { serviceId }
       │
       ▼
 Redirect to /checkout/o/{checkoutToken}
@@ -124,7 +124,7 @@ User pays via Cash App → Same Page (Success/Failed UI)
 
 ## API Reference
 
-### POST /api/create-payment-intent
+### POST /api/v1/create-payment-intent
 
 Creates a payment session and returns a secure checkout URL.
 
@@ -283,7 +283,7 @@ async function createPaymentSession(userId, quantity) {
   // Calculate amount (e.g., $5 per unit)
   const amount = quantity * 5
 
-  const response = await fetch('https://dztech.shop/api/create-payment-intent', {
+  const response = await fetch('https://dztech.shop/api/v1/create-payment-intent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -450,7 +450,7 @@ Payments made through DZTech include helpful metadata visible in Stripe:
 
 ```bash
 # Create payment session
-curl -X POST https://dztech.shop/api/create-payment-intent \
+curl -X POST https://dztech.shop/api/v1/create-payment-intent \
   -H "Content-Type: application/json" \
   -d '{
     "apiKey": "YOUR_PROVIDER_API_KEY",

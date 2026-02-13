@@ -53,7 +53,7 @@ export function ServicesGrid({
   const handleBuyNow = async (serviceId: string) => {
     setBuyingServiceId(serviceId)
     try {
-      const response = await fetch('/api/create-payment-intent', {
+      const response = await fetch('/api/v1/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId }),

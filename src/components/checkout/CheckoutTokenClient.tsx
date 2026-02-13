@@ -103,7 +103,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
       }
 
       try {
-        const response = await fetch(`/api/checkout-session/${token}`)
+        const response = await fetch(`/api/v1/checkout-session/${token}`)
 
         if (!response.ok) {
           const errorData = await response.json()

@@ -17,7 +17,7 @@ export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) 
     setLoading(true)
     try {
       // Create payment intent and get a secure checkout token
-      const response = await fetch('/api/create-payment-intent', {
+      const response = await fetch('/api/v1/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId }),

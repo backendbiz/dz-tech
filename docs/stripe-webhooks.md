@@ -29,13 +29,13 @@ Webhooks allow Stripe to notify your application when events happen in your acco
 Your webhook endpoint is located at:
 
 ```
-/api/stripe/webhooks
+/api/v1/stripe/webhooks
 ```
 
 **Full URL Examples:**
 
-- Local: `http://localhost:3000/api/stripe/webhooks`
-- Production: `https://your-domain.com/api/stripe/webhooks`
+- Local: `http://localhost:3000/api/v1/stripe/webhooks`
+- Production: `https://your-domain.com/api/v1/stripe/webhooks`
 
 ---
 
@@ -75,7 +75,7 @@ pnpm run dev
 Then in a **new terminal**, run:
 
 ```bash
-stripe listen --forward-to http://localhost:3000/api/stripe/webhooks
+stripe listen --forward-to http://localhost:3000/api/v1/stripe/webhooks
 ```
 
 You'll see output like:
@@ -112,7 +112,7 @@ Click **"Add endpoint"** and configure:
 
 | Setting          | Value                                         |
 | ---------------- | --------------------------------------------- |
-| **Endpoint URL** | `https://your-domain.com/api/stripe/webhooks` |
+| **Endpoint URL** | `https://your-domain.com/api/v1/stripe/webhooks` |
 | **Description**  | (Optional) DZTech Payment Webhooks            |
 | **Listen to**    | Events on your account                        |
 
@@ -305,7 +305,7 @@ stripe trigger charge.dispute.created
 ### Test with Real Payments
 
 1. Start your dev server
-2. Start webhook forwarding: `stripe listen --forward-to http://localhost:3000/api/stripe/webhooks`
+2. Start webhook forwarding: `stripe listen --forward-to http://localhost:3000/api/v1/stripe/webhooks`
 3. Go through the checkout flow using Cash App test mode
 4. Watch the terminal for webhook events
 
@@ -349,7 +349,7 @@ stripe events retrieve evt_xxxxxxxxxxxxx
 
 **Cause:** Event type not handled.
 
-**Solution:** Check that the event type is listed in `STRIPE_CONFIG.webhookEvents` and has a handler in the switch statement in `src/app/api/stripe/webhooks/route.ts`.
+**Solution:** Check that the event type is listed in `STRIPE_CONFIG.webhookEvents` and has a handler in the switch statement in `src/app/api/v1/stripe/webhooks/route.ts`.
 
 #### "Connection refused" (Local Development)
 
@@ -358,7 +358,7 @@ stripe events retrieve evt_xxxxxxxxxxxxx
 **Solution:**
 
 1. Start your dev server first: `pnpm run dev`
-2. Then run: `stripe listen --forward-to http://localhost:3000/api/stripe/webhooks`
+2. Then run: `stripe listen --forward-to http://localhost:3000/api/v1/stripe/webhooks`
 
 #### "No order found for disputed payment intent"
 
@@ -375,7 +375,7 @@ stripe events retrieve evt_xxxxxxxxxxxxx
 Add logging to your webhook handler:
 
 ```typescript
-// In src/app/api/stripe/webhooks/route.ts
+// In src/app/api/v1/stripe/webhooks/route.ts
 console.log('Webhook received:', event.type)
 console.log('Event ID:', event.id)
 console.log('Metadata:', event.data.object.metadata)
@@ -406,7 +406,7 @@ STRIPE_WEBHOOKS_ENDPOINT_SECRET=whsec_xxxxxxxxxxxxx
 stripe login
 
 # Forward webhooks
-stripe listen --forward-to http://localhost:3000/api/stripe/webhooks
+stripe listen --forward-to http://localhost:3000/api/v1/stripe/webhooks
 
 # Trigger test events
 stripe trigger payment_intent.succeeded

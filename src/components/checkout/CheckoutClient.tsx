@@ -105,14 +105,14 @@ export function CheckoutClient() {
       try {
         // === Standard Service ID Flow ===
         // 1. First, fetch service details
-        const serviceResponse = await fetch(`/api/services/${serviceId}`)
+        const serviceResponse = await fetch(`/api/v1/services/${serviceId}`)
         if (!serviceResponse.ok) {
           throw new Error('Service not found')
         }
         const currentService: ServiceData = await serviceResponse.json()
 
         // 2. Then, create a payment intent
-        const paymentResponse = await fetch('/api/create-payment-intent', {
+        const paymentResponse = await fetch('/api/v1/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
