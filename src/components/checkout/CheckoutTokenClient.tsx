@@ -603,17 +603,6 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
             )}
           </div>
         </div>
-
-        {/* Back Link */}
-        <div className="mt-6 text-center">
-          <Link
-            href={`/services/${service.slug}`}
-            className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1"
-          >
-            <Icon name="arrow-left" className="h-4 w-4" />
-            Back to Service Details
-          </Link>
-        </div>
       </div>
     </div>
   )
