@@ -91,7 +91,7 @@ export function ServicesGrid({
           {services.map((service) => (
             <Card
               key={service.id}
-              className="group flex min-h-[400px] flex-col overflow-hidden border border-gray-200 p-0 text-center transition-all hover:shadow-lg"
+              className="group flex min-h-100 flex-col overflow-hidden border border-gray-200 p-0 text-center transition-all hover:shadow-lg"
               padding="none"
             >
               {/* Image or Icon */}

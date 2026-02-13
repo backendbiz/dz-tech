@@ -400,6 +400,8 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
               <button
                 onClick={copyOrderId}
                 className="p-1 hover:bg-gray-200 rounded transition-colors"
+                aria-label="Copy order ID"
+                title="Copy order ID"
               >
                 <Icon name={copied ? 'check' : 'copy'} className="h-4 w-4 text-gray-500" />
               </button>
