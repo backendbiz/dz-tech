@@ -366,12 +366,6 @@ export function CheckoutClient() {
             >
               Try Again
             </button>
-            <Link
-              href="/services"
-              className="block w-full py-3 px-4 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-center"
-            >
-              Browse Services
-            </Link>
           </div>
         </Card>
       </div>
@@ -523,13 +517,6 @@ export function CheckoutClient() {
               </button>
             </div>
           </div>
-
-          <Link
-            href="/services"
-            className="block w-full py-3 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors text-center"
-          >
-            Browse Services
-          </Link>
         </Card>
       </div>
     )
@@ -562,12 +549,6 @@ export function CheckoutClient() {
             >
               Try Again
             </button>
-            <Link
-              href="/services"
-              className="block w-full py-3 px-4 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-center"
-            >
-              Browse Services
-            </Link>
           </div>
         </Card>
       </div>
