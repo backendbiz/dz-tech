@@ -75,6 +75,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
               data: {
                 status: 'paid',
               },
+              overrideAccess: true,
             })
             console.log(
               `[CHECKOUT-SESSION] Order ${order.id} updated to 'paid' (fallback — Stripe confirmed succeeded but DB was '${order.status}')`,
@@ -95,6 +96,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
               collection: 'orders',
               id: order.id,
               data: { status: 'failed' },
+              overrideAccess: true,
             })
             console.log(
               `[CHECKOUT-SESSION] Order ${order.id} updated to 'failed' (Stripe status: ${paymentIntent.status})`,

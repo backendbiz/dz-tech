@@ -49,6 +49,7 @@ async function createPendingOrderWithRetry(
               data: {
                 checkoutToken: orderData.checkoutToken,
               },
+              overrideAccess: true,
             })
           } catch (err) {
             console.error('Failed to backfill checkoutToken:', err)
@@ -78,6 +79,7 @@ async function createPendingOrderWithRetry(
           // Store client-generated Order ID
           ...(orderData.clientOrderId && { orderId: orderData.clientOrderId }),
         },
+        overrideAccess: true,
       })
 
       console.log(`Successfully created pending order: ${order.id}`)

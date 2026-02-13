@@ -175,6 +175,7 @@ export const paymentIntentSucceeded = async ({ event }) => {
       collection: 'orders',
       id: existingOrders.docs[0].id,
       data: { status: 'paid' },
+      overrideAccess: true,
     })
   } else if (serviceId) {
     // Create new order if it doesn't exist
@@ -188,6 +189,7 @@ export const paymentIntentSucceeded = async ({ event }) => {
         ...(providerId && { provider: providerId }),
         ...(externalId && { externalId }),
       },
+      overrideAccess: true,
     })
   }
 
@@ -223,6 +225,7 @@ export const paymentIntentFailed = async ({ event }) => {
       collection: 'orders',
       id: existingOrders.docs[0].id,
       data: { status: 'failed' },
+      overrideAccess: true,
     })
   }
 }

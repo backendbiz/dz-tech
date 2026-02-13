@@ -48,6 +48,7 @@ export const seed = async (payload: Payload) => {
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: cat as any,
+          overrideAccess: true,
         })
         categoryDocs[cat.slug] = created.id
       }
@@ -149,6 +150,7 @@ export const seed = async (payload: Payload) => {
           collection: 'services',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: service as any,
+          overrideAccess: true,
         })
       }
     }
@@ -186,6 +188,7 @@ export const seed = async (payload: Payload) => {
           collection: 'jobs',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: job as any,
+          overrideAccess: true,
         })
       }
     }
@@ -523,6 +526,7 @@ export const seed = async (payload: Payload) => {
           id: existing.docs[0].id,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: page as any,
+          overrideAccess: true,
         })
       } else {
         console.log(`Creating ${page.slug}...`)
@@ -530,6 +534,7 @@ export const seed = async (payload: Payload) => {
           collection: 'pages',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data: page as any,
+          overrideAccess: true,
         })
       }
     }
@@ -672,6 +677,7 @@ export const seed = async (payload: Payload) => {
             collection: 'projects',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: projectData as any,
+            overrideAccess: true,
           })
         } else {
           console.error(

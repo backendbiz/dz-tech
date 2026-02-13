@@ -33,12 +33,14 @@ async function seed() {
         collection: 'pages',
         id: existingPages.docs[0].id,
         data: getHomePageData(),
+        overrideAccess: true,
       })
     } else {
       console.log('Creating Home page...')
       await payload.create({
         collection: 'pages',
         data: getHomePageData(),
+        overrideAccess: true,
       })
     }
 

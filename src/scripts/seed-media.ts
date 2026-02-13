@@ -117,6 +117,7 @@ async function seed() {
           mimetype: 'image/jpeg',
           size: fileBuffer.length,
         },
+        overrideAccess: true,
       })
 
       uploadedMedia[image.name] = media.id
@@ -147,6 +148,7 @@ async function seed() {
             heroType: 'image', // Switch to image hero to show off the media
             heroImage: uploadedMedia['hero-business-meeting'],
           },
+          overrideAccess: true,
         })
         console.log('Updated Home page hero image.')
       }
@@ -172,6 +174,7 @@ async function seed() {
             data: {
               featuredImage: uploadedMedia[imageName],
             },
+            overrideAccess: true,
           })
           console.log(`Updated ${slug} featured image.`)
         }
@@ -194,6 +197,7 @@ async function seed() {
             heroType: 'image',
             heroImage: uploadedMedia['office-interior'],
           },
+          overrideAccess: true,
         })
         console.log('Updated About page hero image.')
       }

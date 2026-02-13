@@ -142,6 +142,7 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
         data: {
           status: 'paid',
         },
+        overrideAccess: true,
       })
       console.log(
         '[WEBHOOK:SUCCESS] ✅ Order',
@@ -167,6 +168,7 @@ export const paymentIntentSucceeded = async ({ event }: any) => {
           ...(providerId && { provider: providerId }),
           ...(externalId && { externalId }),
         },
+        overrideAccess: true,
       })
       console.log('[WEBHOOK:SUCCESS] ✅ New order created:', newOrder.id)
 
@@ -242,6 +244,7 @@ export const paymentIntentFailed = async ({ event }: any) => {
         data: {
           status: 'failed',
         },
+        overrideAccess: true,
       })
       console.log('[WEBHOOK:FAILED] ✅ Order', existingOrder.id, 'marked as failed')
 
@@ -325,6 +328,7 @@ async function updateOrderDisputeStatus(dispute: any) {
           disputeAmount: dispute.amount / 100, // Convert cents to dollars
           disputeReason: dispute.reason,
         },
+        overrideAccess: true,
       })
 
       console.log(
