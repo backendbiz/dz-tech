@@ -8,7 +8,6 @@ import crypto from 'crypto'
  *
  * Example: caa36d0b5aed3f52d2eab944d5b1bdb5
  *
- * This replaces the old pattern of exposing serviceId + orderId in the URL.
  * The token is stored on the order document and used to look up the checkout session.
  */
 
@@ -16,7 +15,7 @@ import crypto from 'crypto'
  * Generates a cryptographically random checkout token
  * @returns 32-character hex string (128 bits of entropy)
  */
-export function generateCheckoutToken(): string {
+export const generateCheckoutToken = (): string => {
   return crypto.randomBytes(16).toString('hex')
 }
 
@@ -25,6 +24,6 @@ export function generateCheckoutToken(): string {
  * @param token - Token to validate
  * @returns Boolean indicating if the format is valid (32 hex characters)
  */
-export function isValidCheckoutToken(token: string): boolean {
+export const isValidCheckoutToken = (token: string): boolean => {
   return /^[a-f0-9]{32}$/.test(token)
 }

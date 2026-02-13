@@ -5,6 +5,7 @@ import { isValidApiKeyFormat } from '@/lib/api-key'
 import { generateCheckoutToken } from '@/lib/checkout-token'
 import type { Payload } from 'payload'
 import type { Service, Order, Provider } from '@/payload-types'
+import { generateOrderId } from '@/lib/order-generator'
 
 /**
  * Helper function to create a pending order with retry logic
@@ -182,10 +183,6 @@ async function validateProviderApiKey(
     return null
   }
 }
-
-import { generateOrderId } from '@/lib/order-generator'
-
-// ... existing imports
 
 export async function POST(req: Request) {
   try {
