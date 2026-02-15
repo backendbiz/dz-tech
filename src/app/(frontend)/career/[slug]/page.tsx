@@ -99,7 +99,7 @@ export default async function JobPage({ params }: Props) {
                   {job.responsibilities.map((item, idx) =>
                     item.text ? (
                       <li key={idx} className="flex gap-3 text-gray-600">
-                        <span className="mt-1.5 min-w-[6px] h-[6px] rounded-full bg-blue-500 shrink-0"></span>
+                        <span className="mt-1.5 min-w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
                         <span>{item.text}</span>
                       </li>
                     ) : null,
@@ -116,7 +116,7 @@ export default async function JobPage({ params }: Props) {
                   {job.requirements.map((item, idx) =>
                     item.text ? (
                       <li key={idx} className="flex gap-3 text-gray-600">
-                        <span className="mt-1.5 min-w-[6px] h-[6px] rounded-full bg-blue-500 shrink-0"></span>
+                        <span className="mt-1.5 min-w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
                         <span>{item.text}</span>
                       </li>
                     ) : null,
