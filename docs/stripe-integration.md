@@ -143,7 +143,7 @@ Checkout URLs use **cryptographically secure tokens** instead of exposing intern
 | Validation   | `/^[a-f0-9]{32}$/`                       |
 | Storage      | Unique indexed field on Order document   |
 
-**Example URL**: `https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5`
+**Example URL**: `https://checkout.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5`
 
 ### Encryption
 
@@ -182,7 +182,7 @@ Creates a Payment Intent and pending Order. Returns a secure checkout URL.
   "clientSecret": "pi_xxx_secret_xxx",
   "orderId": "65b...",
   "checkoutToken": "caa36d0b5aed3f52d2eab944d5b1bdb5",
-  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "checkoutUrl": "https://checkout.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
   "amount": 2000,
   "quantity": 1,
   "serviceName": "Web Development",
@@ -195,7 +195,7 @@ Creates a Payment Intent and pending Order. Returns a secure checkout URL.
 
 ```json
 {
-  "checkoutUrl": "https://app.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
+  "checkoutUrl": "https://checkout.dztech.shop/checkout/o/caa36d0b5aed3f52d2eab944d5b1bdb5",
   "orderId": "65b...",
   "externalId": "YOUR-INTERNAL-ORDER-ID",
   "amount": 100

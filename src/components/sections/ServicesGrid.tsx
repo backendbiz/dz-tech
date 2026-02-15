@@ -66,7 +66,8 @@ export function ServicesGrid({
       const data = await response.json()
 
       if (data.checkoutToken) {
-        const checkoutBaseUrl = process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://app.dztech.shop'
+        const checkoutBaseUrl =
+          process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://checkout.dztech.shop'
         const url = `${checkoutBaseUrl}/checkout/o/${data.checkoutToken}`
         window.open(url, '_blank')
       }

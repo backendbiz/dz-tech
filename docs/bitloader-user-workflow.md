@@ -29,7 +29,7 @@ Content-Type: application/json
 **Response:**
 ```json
 {
-  "checkoutUrl": "https://app.dztech.shop/checkout/o/abc123def456...",
+  "checkoutUrl": "https://checkout.dztech.shop/checkout/o/abc123def456...",
   "orderId": "698c4d780c1e43542bab7aa9",
   "externalId": "BL-ORDER-12345",
   "amount": 100
@@ -47,7 +47,7 @@ Content-Type: application/json
 The user's browser loads the DZTech checkout page.
 
 ```
-User Browser → https://app.dztech.shop/checkout/o/{token}
+User Browser → https://checkout.dztech.shop/checkout/o/{token}
 ```
 
 **What Happens:**
@@ -59,7 +59,7 @@ User Browser → https://app.dztech.shop/checkout/o/{token}
 
 ### Step 3: User Completes Payment
 
-The user completes the payment using Cash App.
+The user completes the payment using Cash checkout.
 
 **Payment Flow:**
 1. User scans QR code or taps Cash App button
