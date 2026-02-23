@@ -93,7 +93,6 @@ export function ServicesGrid({
             <Card
               key={service.id}
               className="group flex min-h-100 flex-col overflow-hidden border border-gray-200 p-0 text-center transition-all hover:shadow-lg"
-              padding="none"
             >
               {/* Image or Icon */}
               <div className="relative h-48 w-full overflow-hidden bg-gray-100">
@@ -149,7 +148,7 @@ export function ServicesGrid({
 
                 {/* CTA Button */}
                 <div className="mt-auto flex gap-4">
-                  <Button variant="primary" href={`/services/${service.slug}`} className="w-full">
+                  <Button variant="default" href={`/services/${service.slug}`} className="w-full">
                     Learn More
                   </Button>
                   <Button

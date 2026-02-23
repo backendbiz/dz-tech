@@ -73,7 +73,7 @@ export default async function JobPage({ params }: Props) {
             {job.title}
           </h1>
 
-          <Button variant="primary" className="mt-4" size="lg">
+          <Button variant="default" className="mt-4" size="lg">
             Apply Now
           </Button>
         </div>
@@ -126,7 +126,7 @@ export default async function JobPage({ params }: Props) {
             )}
 
             <div className="border-t border-gray-100 pt-8 mt-8 flex justify-center">
-              <Button variant="primary" size="lg" className="px-12">
+              <Button variant="default" size="lg" className="px-12">
                 Apply for this position
               </Button>
             </div>

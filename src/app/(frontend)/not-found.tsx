@@ -13,7 +13,7 @@ export default function NotFound() {
           Sorry, the page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button variant="primary" href="/">
+          <Button variant="default" href="/">
             Go to Homepage
           </Button>
           <Button variant="outline" href="/contact">

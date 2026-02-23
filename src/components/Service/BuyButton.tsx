@@ -42,7 +42,7 @@ export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) 
   }
 
   return (
-    <Button variant="primary" className="mb-4 w-full" onClick={handleBuy} disabled={loading}>
+    <Button variant="default" className="mb-4 w-full" onClick={handleBuy} disabled={loading}>
       {loading ? 'Processing...' : label}
     </Button>
   )

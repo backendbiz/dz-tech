@@ -158,7 +158,7 @@ export function Header({
           {/* CTA Button */}
           <div className="hidden lg:block">
             {ctaButton.enabled && (
-              <Button variant="primary" href={ctaButton.link}>
+              <Button variant="default" href={ctaButton.link}>
                 {ctaButton.label}
               </Button>
             )}
@@ -232,7 +232,7 @@ export function Header({
               ))}
               {ctaButton.enabled && (
                 <div className="pt-4 mt-4 border-t border-white/10">
-                  <Button variant="primary" href={ctaButton.link} className="w-full justify-center">
+                  <Button variant="default" href={ctaButton.link} className="w-full justify-center">
                     {ctaButton.label}
                   </Button>
                 </div>

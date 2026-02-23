@@ -120,7 +120,7 @@ export default async function AboutPage() {
 
                   <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
                     {block.members?.map((member, i) => (
-                      <Card key={member.id || i} className="text-center" padding="lg">
+                      <Card key={member.id || i} className="text-center p-8">
                         {/* 
                             Member Image Handling: 
                             If image exists, render it. 
