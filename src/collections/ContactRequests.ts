@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { anyone, adminOnly } from '@/access'
 
 export const ContactRequests: CollectionConfig = {
   slug: 'contact-requests',
@@ -6,10 +7,10 @@ export const ContactRequests: CollectionConfig = {
     useAsTitle: 'email',
   },
   access: {
-    create: () => true, // Allow anyone to submit a contact request
-    read: ({ req: { user } }) => Boolean(user), // Only logged-in users (admins) can read
-    update: ({ req: { user } }) => Boolean(user),
-    delete: ({ req: { user } }) => Boolean(user),
+    create: anyone, // Allow anyone to submit a contact request
+    read: adminOnly, // Only admins can read
+    update: adminOnly, // Only admins can update
+    delete: adminOnly, // Only admins can delete
   },
   fields: [
     {
