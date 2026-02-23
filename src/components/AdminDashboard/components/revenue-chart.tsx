@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useRevenueQuery } from '../queries/useRevenueQuery'
 import {
   AreaChart,
   Area,
@@ -10,16 +10,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-const mockData = [
-  { month: 'Aug', revenue: 4200 },
-  { month: 'Sep', revenue: 5800 },
-  { month: 'Oct', revenue: 5200 },
-  { month: 'Nov', revenue: 7800 },
-  { month: 'Dec', revenue: 9100 },
-  { month: 'Jan', revenue: 8400 },
-  { month: 'Feb', revenue: 11250 },
-]
 
 function CustomTooltip({
   active,
@@ -42,13 +32,7 @@ function CustomTooltip({
 }
 
 export function RevenueChart() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['revenue-chart'],
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 600))
-      return mockData
-    },
-  })
+  const { data, isLoading } = useRevenueQuery()
 
   return (
     <div className="adm-panel">

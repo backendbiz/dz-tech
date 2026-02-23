@@ -1,53 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-
-interface StatCard {
-  id: string
-  title: string
-  value: string
-  change: string
-  changeValue: number
-  description: string
-  prefix?: string
-}
-
-const mockCards: StatCard[] = [
-  {
-    id: 'revenue',
-    title: 'Total Revenue',
-    value: '1,250.00',
-    prefix: '$',
-    change: '+12.5%',
-    changeValue: 12.5,
-    description: 'Visitors for the last 6 months',
-  },
-  {
-    id: 'customers',
-    title: 'New Customers',
-    value: '1,234',
-    change: '-20%',
-    changeValue: -20,
-    description: 'Acquisition needs attention',
-  },
-  {
-    id: 'accounts',
-    title: 'Active Accounts',
-    value: '45,678',
-    change: '+12.5%',
-    changeValue: 12.5,
-    description: 'Engagement exceeds targets',
-  },
-  {
-    id: 'growth',
-    title: 'Growth Rate',
-    value: '4.5',
-    prefix: '',
-    change: '+4.5%',
-    changeValue: 4.5,
-    description: 'Meets growth projections',
-  },
-]
+import { useSectionCardsQuery, StatCard } from '../queries/useSectionCardsQuery'
 
 function ArrowUpIcon() {
   return (
@@ -117,13 +70,7 @@ function StatCardItem({ card }: { card: StatCard }) {
 }
 
 export function SectionCards() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['section-cards'],
-    queryFn: async (): Promise<StatCard[]> => {
-      await new Promise((r) => setTimeout(r, 800))
-      return mockCards
-    },
-  })
+  const { data, isLoading, isError } = useSectionCardsQuery()
 
   if (isError) {
     return <div className="adm-error">Failed to load stats. Please refresh.</div>

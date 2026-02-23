@@ -1,80 +1,17 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
+import { useRecentOrdersQuery } from '../queries/useRecentOrdersQuery'
 
-interface Order {
-  id: string
-  customer: string
-  email: string
-  product: string
-  amount: string
-  status: 'Completed' | 'Pending' | 'Processing' | 'Cancelled'
-  date: string
-}
-
-const mockOrders: Order[] = [
-  {
-    id: 'ORD-002',
-    customer: 'Bob Smith',
-    email: 'bob@example.com',
-    product: 'Starter Plan',
-    amount: '$29.00',
-    status: 'Pending',
-    date: 'Feb 21, 2026',
-  },
-  {
-    id: 'ORD-003',
-    customer: 'Carol White',
-    email: 'carol@example.com',
-    product: 'Enterprise Plan',
-    amount: '$299.00',
-    status: 'Processing',
-    date: 'Feb 21, 2026',
-  },
-  {
-    id: 'ORD-001',
-    customer: 'Alice Johnson',
-    email: 'alice@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Completed',
-    date: 'Feb 20, 2026',
-  },
-  {
-    id: 'ORD-004',
-    customer: 'David Lee',
-    email: 'david@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Cancelled',
-    date: 'Feb 19, 2026',
-  },
-  {
-    id: 'ORD-005',
-    customer: 'Eva Martinez',
-    email: 'eva@example.com',
-    product: 'Starter Plan',
-    amount: '$29.00',
-    status: 'Completed',
-    date: 'Feb 18, 2026',
-  },
-  {
-    id: 'ORD-006',
-    customer: 'Frank Brown',
-    email: 'frank@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Completed',
-    date: 'Feb 17, 2026',
-  },
-]
-
-const statusStyles: Record<Order['status'], string> = {
+const statusStyles = {
   Completed: 'adm-status-completed',
   Pending: 'adm-status-pending',
   Processing: 'adm-status-processing',
   Cancelled: 'adm-status-cancelled',
+  Paid: 'adm-status-completed',
+  Failed: 'adm-status-cancelled',
+  Refunded: 'adm-status-cancelled',
+  Disputed: 'adm-status-processing',
 }
 
 function TableSkeleton() {
@@ -93,20 +30,14 @@ function TableSkeleton() {
 }
 
 export function RecentOrders() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['recent-orders'],
-    queryFn: async (): Promise<Order[]> => {
-      await new Promise((r) => setTimeout(r, 700))
-      return mockOrders
-    },
-  })
+  const { data, isLoading, isError } = useRecentOrdersQuery()
 
   return (
     <div className="adm-panel">
       <div className="adm-panel-header">
         <div>
           <h2 className="adm-panel-title">Recent Orders</h2>
-          <p className="adm-panel-sub">{mockOrders.length} orders this period</p>
+          <p className="adm-panel-sub">{data?.length || 0} orders this period</p>
         </div>
         <Link href="/admin/collections/orders" className="adm-view-all">
           View all

@@ -1,111 +1,8 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { useQuery } from '@tanstack/react-query'
 import { DataTable } from './data-table'
-
-export type Order = {
-  id: string
-  customer: string
-  email: string
-  product: string
-  amount: string
-  status: 'Completed' | 'Pending' | 'Cancelled' | 'Processing'
-  date: string
-}
-
-const mockOrders: Order[] = [
-  {
-    id: 'ORD-001',
-    customer: 'Alice Johnson',
-    email: 'alice@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Completed',
-    date: '2026-02-20',
-  },
-  {
-    id: 'ORD-002',
-    customer: 'Bob Smith',
-    email: 'bob@example.com',
-    product: 'Starter Plan',
-    amount: '$29.00',
-    status: 'Pending',
-    date: '2026-02-21',
-  },
-  {
-    id: 'ORD-003',
-    customer: 'Carol White',
-    email: 'carol@example.com',
-    product: 'Enterprise Plan',
-    amount: '$299.00',
-    status: 'Processing',
-    date: '2026-02-21',
-  },
-  {
-    id: 'ORD-004',
-    customer: 'David Lee',
-    email: 'david@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Cancelled',
-    date: '2026-02-19',
-  },
-  {
-    id: 'ORD-005',
-    customer: 'Eva Martinez',
-    email: 'eva@example.com',
-    product: 'Starter Plan',
-    amount: '$29.00',
-    status: 'Completed',
-    date: '2026-02-18',
-  },
-  {
-    id: 'ORD-006',
-    customer: 'Frank Brown',
-    email: 'frank@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Completed',
-    date: '2026-02-17',
-  },
-  {
-    id: 'ORD-007',
-    customer: 'Grace Kim',
-    email: 'grace@example.com',
-    product: 'Enterprise Plan',
-    amount: '$299.00',
-    status: 'Pending',
-    date: '2026-02-16',
-  },
-  {
-    id: 'ORD-008',
-    customer: 'Henry Wilson',
-    email: 'henry@example.com',
-    product: 'Starter Plan',
-    amount: '$29.00',
-    status: 'Completed',
-    date: '2026-02-15',
-  },
-  {
-    id: 'ORD-009',
-    customer: 'Isla Thompson',
-    email: 'isla@example.com',
-    product: 'Pro Plan',
-    amount: '$99.00',
-    status: 'Processing',
-    date: '2026-02-14',
-  },
-  {
-    id: 'ORD-010',
-    customer: 'Jack Davis',
-    email: 'jack@example.com',
-    product: 'Enterprise Plan',
-    amount: '$299.00',
-    status: 'Completed',
-    date: '2026-02-13',
-  },
-]
+import { useOrdersQuery, Order } from '../queries/useOrdersQuery'
 
 const statusStyles: Record<Order['status'], string> = {
   Completed:
@@ -200,14 +97,7 @@ function TableSkeleton() {
 }
 
 export function OrdersTable() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['orders'],
-    queryFn: async (): Promise<Order[]> => {
-      // Replace with real API call e.g. fetch('/api/orders')
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      return mockOrders
-    },
-  })
+  const { data, isLoading, isError } = useOrdersQuery()
 
   if (isLoading) return <TableSkeleton />
 

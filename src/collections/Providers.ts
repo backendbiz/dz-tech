@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { generateApiKey } from '@/lib/api-key'
+import { adminOnly } from '@/access'
 
 export const Providers: CollectionConfig = {
   slug: 'providers',
@@ -9,11 +10,11 @@ export const Providers: CollectionConfig = {
     defaultColumns: ['name', 'service', 'status', 'createdAt'],
   },
   access: {
-    // Admin only access
-    read: () => true, // Allow reading for API validation
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    // Admin only access - API keys must be protected
+    read: adminOnly,
+    create: adminOnly,
+    update: adminOnly,
+    delete: adminOnly,
   },
   hooks: {
     beforeChange: [

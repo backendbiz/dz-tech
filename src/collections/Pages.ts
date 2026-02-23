@@ -6,6 +6,7 @@ import {
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
 import { formatSlug } from '@/utils/slug'
+import { publicReadAdminWrite } from '@/access'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -13,12 +14,7 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
   },
-  access: {
-    read: () => true,
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
-  },
+  access: publicReadAdminWrite,
   hooks: {
     afterChange: [revalidate],
   },
