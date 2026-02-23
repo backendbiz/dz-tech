@@ -1,7 +1,5 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-
 export function DashboardHeader() {
   return (
     <header className="adm:flex adm:items-end adm:justify-between adm:pb-6 adm:border-b adm:border-[var(--adm-border)]">
