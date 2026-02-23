@@ -75,7 +75,7 @@ export function PaymentForm({ orderId, amount, onSuccess, onError }: PaymentForm
       {/* Submit Button */}
       <Button
         type="submit"
-        variant="primary"
+        variant="default"
         className="w-full py-4 text-base"
         disabled={!stripe || isProcessing}
       >

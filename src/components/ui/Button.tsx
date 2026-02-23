@@ -1,54 +1,91 @@
-'use client'
-
-import { cn } from '@/utils/cn'
+import * as React from 'react'
 import Link from 'next/link'
-import { forwardRef } from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { Slot } from 'radix-ui'
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-  href?: string
-  children: React.ReactNode
-}
+import { cn } from '@/lib/utils'
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', href, children, ...props }, ref) => {
-    const baseStyles =
-      'inline-flex items-center justify-center gap-2 font-heading font-semibold rounded transition-all duration-300 cursor-pointer border-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2'
-
-    const variants = {
-      primary:
-        'bg-blue-500 text-white hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,153,255,0.3)]',
-      secondary: 'bg-navy-900 text-white hover:bg-navy-700 hover:-translate-y-0.5',
-      outline:
-        'bg-transparent text-blue-500 border-2 border-blue-500 hover:bg-blue-500 hover:text-white',
-    }
-
-    const sizes = {
-      sm: 'px-4 py-2 text-sm',
-      md: 'px-[1.875rem] py-3 text-sm',
-      lg: 'px-10 py-4 text-base',
-    }
-
-    const classes = cn(baseStyles, variants[variant], sizes[size], className)
-
-    if (href) {
-      return (
-        // @ts-expect-error - Link accepts anchor props
-        <Link href={href} className={classes} {...props}>
-          {children}
-        </Link>
-      )
-    }
-
-    return (
-      <button ref={ref} className={classes} {...props}>
-        {children}
-      </button>
-    )
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        destructive:
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+        outline:
+          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
+        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
+        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
+        icon: 'size-9',
+        'icon-xs': "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
+        'icon-sm': 'size-8',
+        'icon-lg': 'size-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
   },
 )
 
-Button.displayName = 'Button'
+function Button({
+  className,
+  variant = 'default',
+  size = 'default',
+  asChild = false,
+  href,
+  ...props
+}: React.ComponentProps<'button'> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+    href?: string
+    target?: string
+    rel?: string
+  }) {
+  if (asChild) {
+    return (
+      <Slot.Root
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    )
+  }
 
-export { Button }
+  if (href) {
+    return (
+      <Link
+        href={href}
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...(props as any)}
+      />
+    )
+  }
+
+  return (
+    <button
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }

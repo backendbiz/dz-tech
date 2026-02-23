@@ -280,10 +280,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   if (paymentStatus === 'succeeded' && redirecting && state.provider) {
     return (
       <div className="min-h-screen bg-linear-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
-        <Card
-          className="w-full max-w-md text-center border border-green-200 shadow-lg"
-          padding="lg"
-        >
+        <Card className="w-full max-w-md text-center border border-green-200 shadow-lg">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-6">
             <Icon name="check-circle" className="h-12 w-12 text-green-600" />
           </div>
@@ -338,10 +335,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
     return (
       <div className="min-h-screen bg-linear-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <Card
-            className="text-center border border-green-200 overflow-hidden shadow-xl"
-            padding="none"
-          >
+          <Card className="text-center border border-green-200 overflow-hidden shadow-xl">
             {/* Success Header */}
             <div className="bg-linear-to-br from-green-500 to-green-600 px-8 py-10">
               <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-white/20 mb-6">
@@ -384,7 +378,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   if (paymentStatus === 'processing') {
     return (
       <div className="min-h-screen bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center border border-blue-200 shadow-lg" padding="lg">
+        <Card className="w-full max-w-md text-center border border-blue-200 shadow-lg p-8">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 mb-6">
             <Icon name="clock" className="h-12 w-12 text-blue-600" />
           </div>
@@ -416,7 +410,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   if (paymentStatus === 'failed') {
     return (
       <div className="min-h-screen bg-linear-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center border border-red-200 shadow-lg" padding="lg">
+        <Card className="w-full max-w-md text-center border border-red-200 shadow-lg p-8">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
             <Icon name="alert-circle" className="h-12 w-12 text-red-600" />
           </div>
@@ -463,10 +457,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   if (paymentStatus === 'disputed') {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <Card
-          className="w-full max-w-md text-center p-8 border border-gray-200 shadow-lg"
-          padding="lg"
-        >
+        <Card className="w-full max-w-md text-center p-8 border border-gray-200 shadow-lg">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 mb-6">
             <Icon name="alert-circle" className="h-8 w-8 text-orange-600" />
           </div>
@@ -493,10 +484,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   if (state.error) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <Card
-          className="w-full max-w-md text-center p-8 border border-gray-200 shadow-lg"
-          padding="lg"
-        >
+        <Card className="w-full max-w-md text-center p-8 border border-gray-200 shadow-lg">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 mb-6">
             <Icon name="alert-circle" className="h-8 w-8 text-red-600" />
           </div>
