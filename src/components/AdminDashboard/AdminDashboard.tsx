@@ -7,6 +7,8 @@ import { SectionCards } from './components/section-cards'
 import { RevenueChart } from './components/revenue-chart'
 import { QuickActions } from './components/quick-actions'
 import { RecentOrders } from './components/recent-orders'
+import { AnalyticsTab } from './components/analytics-tab'
+import { NotificationsTab } from './components/notifications-tab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin-ui/tabs'
 
 export function AdminDashboard() {
@@ -37,23 +39,27 @@ export function AdminDashboard() {
                 </svg>
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="analytics" disabled>
-                Analytics
-              </TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="reports" disabled>
                 Reports
               </TabsTrigger>
-              <TabsTrigger value="notifications" disabled>
-                Notifications
-              </TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
             </TabsList>
-            <TabsContent value="overview" className="adm:flex adm:flex-col adm:gap-6">
-              <SectionCards />
-              <div className="adm-grid-2">
-                <RevenueChart />
-                <QuickActions />
+            <TabsContent value="overview" className="adm:outline-none">
+              <div className="adm:flex adm:flex-col adm:gap-6">
+                <SectionCards />
+                {/* <div className="adm-grid-2">
+                  <RevenueChart />
+                  <QuickActions />
+                </div> */}
+                <RecentOrders />
               </div>
-              <RecentOrders />
+            </TabsContent>
+            <TabsContent value="analytics" className="adm:outline-none">
+              <AnalyticsTab />
+            </TabsContent>
+            <TabsContent value="notifications" className="adm:outline-none">
+              <NotificationsTab />
             </TabsContent>
           </Tabs>
         </main>
