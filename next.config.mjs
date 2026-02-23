@@ -10,14 +10,7 @@ const nextConfig = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
       '.mjs': ['.mts', '.mjs'],
     }
-    webpackConfig.resolve.extensions = [
-      '.tsx',
-      '.ts',
-      '.jsx',
-      '.js',
-      '.mjs',
-      ...webpackConfig.resolve.extensions,
-    ]
+    webpackConfig.resolve.extensions = ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json', '.wasm']
 
     return webpackConfig
   },
