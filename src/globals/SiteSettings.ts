@@ -29,9 +29,20 @@ export const SiteSettings: GlobalConfig = {
               defaultValue: 'Professional consulting services for your business growth',
             },
             {
-              name: 'logo',
+              name: 'logoLight',
               type: 'upload',
               relationTo: 'media',
+              admin: {
+                description: 'Logo for light mode',
+              },
+            },
+            {
+              name: 'logoDark',
+              type: 'upload',
+              relationTo: 'media',
+              admin: {
+                description: 'Logo for dark mode',
+              },
             },
             {
               name: 'favicon',

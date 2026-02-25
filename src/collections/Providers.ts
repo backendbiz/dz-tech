@@ -10,7 +10,6 @@ export const Providers: CollectionConfig = {
     defaultColumns: ['name', 'service', 'status', 'createdAt'],
   },
   access: {
-    // Admin only access - API keys must be protected
     read: adminOnly,
     create: adminOnly,
     update: adminOnly,
@@ -19,7 +18,6 @@ export const Providers: CollectionConfig = {
   hooks: {
     beforeChange: [
       async ({ data, operation }) => {
-        // Auto-generate API key on create if not provided
         if (operation === 'create' && !data.apiKey) {
           data.apiKey = generateApiKey()
         }

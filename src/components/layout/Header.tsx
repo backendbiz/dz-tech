@@ -103,14 +103,17 @@ export function Header({
       <nav className={cn('bg-navy-900 transition-all duration-300', isScrolled && 'shadow-lg')}>
         <div className="container flex h-[70px] items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="text-xl font-bold text-white font-heading tracking-wide">
+          <Link
+            href="/"
+            className="relative h-[50px] w-[120px] text-xl font-bold text-white font-heading tracking-wide"
+          >
             {logo?.url ? (
               <Image
                 src={logo.url}
                 alt={logo.alt || siteName || 'Logo'}
-                width={150} // Default width, can be overridden by CSS or prop
-                height={60} // Default height
-                className="h-12 w-auto object-contain"
+                fill
+                className="object-contain"
+                unoptimized
               />
             ) : (
               siteName

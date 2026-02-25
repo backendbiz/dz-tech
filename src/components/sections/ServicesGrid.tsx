@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Card, Button, Icon, type IconName } from '@/components/ui'
 import { cn } from '@/utils/cn'
+import Image from 'next/image'
 
 interface Service {
   id: string
@@ -9,8 +10,13 @@ interface Service {
   title: string
   description: string
   icon?: IconName
-
-  featuredImage?: string | null
+  featuredImage?: {
+    url?: string | null
+    sizes?: {
+      card?: { url?: string | null }
+      thumbnail?: { url?: string | null }
+    }
+  } | null
   price: number
   originalPrice?: number
   priceUnit?: string
@@ -24,8 +30,6 @@ interface ServicesGridProps {
   columns?: 2 | 3
   className?: string
 }
-
-import Image from 'next/image'
 
 export function ServicesGrid({
   title = 'OUR SOLUTIONS',
@@ -78,6 +82,8 @@ export function ServicesGrid({
     }
   }
 
+  console.log('services', services[0].featuredImage?.sizes?.card?.url)
+
   return (
     <section className={cn('section bg-white', className)}>
       <div className="container">
@@ -92,16 +98,18 @@ export function ServicesGrid({
           {services.map((service) => (
             <Card
               key={service.id}
-              className="group flex min-h-100 flex-col overflow-hidden border border-gray-200 p-0 text-center transition-all hover:shadow-lg"
+              className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-0 shadow-sm transition-all duration-300 hover:shadow-xl"
             >
               {/* Image or Icon */}
-              <div className="relative h-48 w-full overflow-hidden bg-gray-100">
-                {service.featuredImage ? (
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                {service.featuredImage?.sizes?.card?.url ? (
                   <Image
-                    src={service.featuredImage}
+                    src={service.featuredImage.sizes.card.url}
                     alt={service.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    unoptimized
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-blue-500/5">

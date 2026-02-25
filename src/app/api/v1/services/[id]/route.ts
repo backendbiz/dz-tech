@@ -36,13 +36,21 @@ export async function GET(request: Request, { params }: Props) {
     // Return service data
     return NextResponse.json({
       id: service.id,
+      createdAt: service.createdAt,
+      updatedAt: service.updatedAt,
       title: service.title,
       description: service.description,
       price: service.price,
+      originalPrice: service.originalPrice,
       priceUnit: service.priceUnit,
       icon: service.icon,
       slug: service.slug,
+      category: service.category,
       features: service.features,
+      order: service.order,
+      status: service.status,
+      featured: service.featured,
+      featuredImage: service.featuredImage,
     })
   } catch (error) {
     console.error('Error fetching service:', error)

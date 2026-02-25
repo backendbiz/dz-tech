@@ -49,6 +49,7 @@ export default async function ServicesPage() {
     collection: 'services',
     sort: 'order',
     limit: 100, // Fetch all relevant services
+    depth: 1, // Populate featuredImage relationship
     where: {
       status: {
         equals: 'published',
@@ -65,15 +66,26 @@ export default async function ServicesPage() {
 
     icon: service.icon as IconName,
     featuredImage:
-      service.featuredImage &&
-      typeof service.featuredImage === 'object' &&
-      'url' in service.featuredImage
-        ? service.featuredImage.url
-        : undefined,
+      service.featuredImage && typeof service.featuredImage === 'object'
+        ? {
+            url: service.featuredImage.url || undefined,
+            sizes: service.featuredImage.sizes
+              ? {
+                  card: service.featuredImage.sizes.card
+                    ? { url: service.featuredImage.sizes.card.url || undefined }
+                    : undefined,
+                  thumbnail: service.featuredImage.sizes.thumbnail
+                    ? { url: service.featuredImage.sizes.thumbnail.url || undefined }
+                    : undefined,
+                }
+              : undefined,
+          }
+        : null,
     price: service.price,
     originalPrice: service.originalPrice || undefined,
     priceUnit: service.priceUnit || undefined,
   }))
+  console.log({ services })
 
   const {
     heroType,

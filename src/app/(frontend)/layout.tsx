@@ -20,12 +20,25 @@ const openSans = Open_Sans({
 export async function generateMetadata(): Promise<Metadata> {
   const siteSettings = await getSiteSettings()
 
+  const favicon =
+    siteSettings.favicon &&
+    typeof siteSettings.favicon === 'object' &&
+    'url' in siteSettings.favicon
+      ? siteSettings.favicon.url
+      : null
+
   return {
     title: {
       default: siteSettings.siteName || 'Consulting',
       template: `%s | ${siteSettings.siteName || 'Consulting'}`,
     },
     description: siteSettings.defaultMetaDescription || 'Professional consulting services.',
+    icons: favicon
+      ? {
+          icon: favicon,
+          shortcut: favicon,
+        }
+      : undefined,
     openGraph: {
       images:
         siteSettings.defaultOgImage &&
@@ -43,10 +56,6 @@ export default async function FrontendLayout({ children }: { children: React.Rea
     getNavigation(),
     getFooter(),
   ])
-
-  // Map Navigation to Header Props
-  // Map Navigation to Header Props
-  // Map Navigation to Header Props
   type NavItem = NonNullable<Navigation['mainNav']>[number]
   type FooterLink = NonNullable<FooterType['quickLinks']>[number]
   type FooterOffice = NonNullable<FooterType['offices']>[number]
@@ -110,15 +119,32 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       url: link.url,
     })) || []
 
-  const logo =
-    siteSettings.logo && typeof siteSettings.logo === 'object' && 'url' in siteSettings.logo
+  const logoLight =
+    siteSettings.logoLight &&
+    typeof siteSettings.logoLight === 'object' &&
+    'url' in siteSettings.logoLight
       ? {
-          url: siteSettings.logo.url,
-          alt: siteSettings.logo.alt || siteSettings.siteName,
-          width: siteSettings.logo.width,
-          height: siteSettings.logo.height,
+          url: siteSettings.logoLight.url,
+          alt: siteSettings.logoLight.alt || siteSettings.siteName,
+          width: siteSettings.logoLight.width,
+          height: siteSettings.logoLight.height,
         }
       : null
+
+  const logoDark =
+    siteSettings.logoDark &&
+    typeof siteSettings.logoDark === 'object' &&
+    'url' in siteSettings.logoDark
+      ? {
+          url: siteSettings.logoDark.url,
+          alt: siteSettings.logoDark.alt || siteSettings.siteName,
+          width: siteSettings.logoDark.width,
+          height: siteSettings.logoDark.height,
+        }
+      : null
+
+  // Use light logo for dark header background (navy-900)
+  const logo = logoDark
 
   const hasTopBar = siteSettings?.phone || siteSettings?.email
   const paddingTopClass = hasTopBar ? 'pt-[70px] md:pt-[115px]' : 'pt-[70px]'

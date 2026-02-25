@@ -190,4 +190,5 @@ export default buildConfig({
     defaultFromName: 'Apex Consulting',
     apiKey: process.env.RESEND_API_KEY || '',
   }),
+  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || '',
 })
