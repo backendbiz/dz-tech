@@ -82,8 +82,6 @@ export function ServicesGrid({
     }
   }
 
-  console.log('services', services[0].featuredImage?.sizes?.card?.url)
-
   return (
     <section className={cn('section bg-white', className)}>
       <div className="container">
@@ -154,14 +152,14 @@ export function ServicesGrid({
                   </div>
                 )}
 
-                {/* CTA Button */}
-                <div className="mt-auto flex gap-4">
+                {/* CTA Buttons */}
+                <div className="mt-auto flex flex-col gap-3">
                   <Button variant="default" href={`/services/${service.slug}`} className="w-full">
                     Learn More
                   </Button>
                   <Button
-                    variant="secondary"
-                    className="w-full"
+                    variant="outline"
+                    className="w-full border-blue-500 text-blue-600 hover:bg-blue-50"
                     disabled={buyingServiceId === service.id}
                     onClick={() => handleBuyNow(service.id)}
                   >
