@@ -85,7 +85,6 @@ export default async function ServicesPage() {
     originalPrice: service.originalPrice || undefined,
     priceUnit: service.priceUnit || undefined,
   }))
-  console.log({ services })
 
   const {
     heroType,
