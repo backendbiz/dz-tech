@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { publicReadAdminWrite } from '@/access'
+import { anyone, publicReadAdminWrite } from '@/access'
 
 export const Jobs: CollectionConfig = {
   slug: 'jobs',
@@ -8,7 +8,12 @@ export const Jobs: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'location', 'type', 'status'],
   },
-  access: publicReadAdminWrite,
+  access: {
+    read: anyone,
+    update: anyone,
+    delete: anyone,
+    create: anyone,
+  },
   hooks: {
     afterChange: [revalidate],
   },

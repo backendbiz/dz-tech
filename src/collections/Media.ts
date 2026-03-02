@@ -1,13 +1,18 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { publicReadAdminWrite } from '@/access'
+import { anyone, publicReadAdminWrite } from '@/access'
 
 export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
     useAsTitle: 'alt',
   },
-  access: publicReadAdminWrite,
+  access: {
+    read: anyone,
+    update: anyone,
+    delete: anyone,
+    create: anyone,
+  },
   hooks: {
     afterChange: [revalidate],
   },

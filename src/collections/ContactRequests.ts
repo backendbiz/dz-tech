@@ -7,10 +7,10 @@ export const ContactRequests: CollectionConfig = {
     useAsTitle: 'email',
   },
   access: {
-    create: anyone, // Allow anyone to submit a contact request
-    read: adminOnly, // Only admins can read
-    update: adminOnly, // Only admins can update
-    delete: adminOnly, // Only admins can delete
+    create: anyone,
+    read: anyone,
+    update: anyone,
+    delete: anyone,
   },
   fields: [
     {

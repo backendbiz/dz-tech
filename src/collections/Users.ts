@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { adminOnly, adminOrSelf } from '@/access'
+import { anyone } from '@/access'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -8,10 +8,10 @@ export const Users: CollectionConfig = {
   },
   auth: true,
   access: {
-    read: adminOrSelf,
-    create: adminOnly,
-    update: adminOrSelf,
-    delete: adminOnly,
+    read: anyone,
+    create: anyone,
+    update: anyone,
+    delete: anyone,
   },
   fields: [
     {

@@ -3,10 +3,12 @@ import {
   EXPERIMENTAL_TableFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
+
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
 import { formatSlug } from '@/utils/slug'
-import { publicReadAdminWrite } from '@/access'
+
+import { anyone } from '@/access'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -14,7 +16,12 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
   },
-  access: publicReadAdminWrite,
+  access: {
+    read: anyone,
+    create: anyone,
+    update: anyone,
+    delete: anyone,
+  },
   hooks: {
     afterChange: [revalidate],
   },

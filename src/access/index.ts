@@ -17,6 +17,7 @@ export const authenticated: Access = ({ req: { user } }) => {
  */
 export const adminOnly: Access = ({ req: { user } }) => {
   if (!user) return false
+  console.log('user', user)
   return user.role === 'admin'
 }
 

@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { publicReadAdminWrite } from '@/access'
+import { anyone } from '@/access'
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
@@ -8,7 +8,12 @@ export const Projects: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'client', 'status'],
   },
-  access: publicReadAdminWrite,
+  access: {
+    read: anyone,
+    create: anyone,
+    update: anyone,
+    delete: anyone,
+  },
   hooks: {
     afterChange: [revalidate],
   },

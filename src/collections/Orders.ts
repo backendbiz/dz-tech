@@ -1,15 +1,5 @@
-import type { CollectionConfig, Access } from 'payload'
-import { adminOnly } from '@/access'
-
-// Allow webhook/API operations to bypass access control when needed
-// But regular operations require admin access
-const adminOrApi: Access = ({ req }) => {
-  // If this is a webhook/API call without a user, it should be handled
-  // by the specific endpoint with overrideAccess: true
-  // For all other cases, require admin
-  if (!req.user) return false
-  return req.user.role === 'admin'
-}
+import type { CollectionConfig } from 'payload'
+import { anyone } from '@/access'
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -18,10 +8,10 @@ export const Orders: CollectionConfig = {
     defaultColumns: ['id', 'createdAt', 'status', 'total', 'service', 'provider', 'disputeStatus'],
   },
   access: {
-    read: adminOnly,
-    create: adminOrApi,
-    update: adminOrApi,
-    delete: adminOnly,
+    read: anyone,
+    create: anyone,
+    update: anyone,
+    delete: anyone,
   },
   fields: [
     {

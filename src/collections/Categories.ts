@@ -1,13 +1,18 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { publicReadAdminWrite } from '@/access'
+import { anyone } from '@/access'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
   admin: {
     useAsTitle: 'name',
   },
-  access: publicReadAdminWrite,
+  access: {
+    read: anyone,
+    update: anyone,
+    delete: anyone,
+    create: anyone,
+  },
   hooks: {
     afterChange: [revalidate],
   },
