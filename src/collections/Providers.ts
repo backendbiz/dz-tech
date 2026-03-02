@@ -10,10 +10,11 @@ export const Providers: CollectionConfig = {
     defaultColumns: ['name', 'service', 'status', 'createdAt'],
   },
   access: {
-    read: anyone,
-    create: anyone,
-    update: anyone,
-    delete: anyone,
+    // Admin only access
+    read: () => true, // Allow reading for API validation
+    create: ({ req }) => Boolean(req.user),
+    update: ({ req }) => Boolean(req.user),
+    delete: ({ req }) => Boolean(req.user),
   },
   hooks: {
     beforeChange: [
