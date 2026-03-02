@@ -26,7 +26,7 @@ export default function Error({
           persists.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button variant="primary" onClick={() => reset()}>
+          <Button variant="default" onClick={() => reset()}>
             Try Again
           </Button>
           <Button variant="outline" href="/">

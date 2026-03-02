@@ -116,7 +116,7 @@ export function Hero({
         {(ctaText || secondaryCta) && (
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             {ctaText && ctaLink && (
-              <Button variant="primary" size="lg" href={ctaLink}>
+              <Button variant="default" size="lg" href={ctaLink}>
                 {ctaText}
               </Button>
             )}

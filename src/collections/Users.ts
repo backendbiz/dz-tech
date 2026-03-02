@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { adminOnly, adminOrSelf } from '@/access'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -6,6 +7,12 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
   },
   auth: true,
+  access: {
+    read: adminOrSelf,
+    create: adminOnly,
+    update: adminOrSelf,
+    delete: adminOnly,
+  },
   fields: [
     {
       name: 'name',
@@ -21,6 +28,10 @@ export const Users: CollectionConfig = {
       ],
       defaultValue: 'editor',
       required: true,
+      saveToJWT: true, // Include role in JWT for fast access checks
+      access: {
+        update: ({ req }) => req.user?.role === 'admin', // Only admins can change roles
+      },
     },
   ],
 }

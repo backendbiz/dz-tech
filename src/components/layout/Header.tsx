@@ -103,14 +103,17 @@ export function Header({
       <nav className={cn('bg-navy-900 transition-all duration-300', isScrolled && 'shadow-lg')}>
         <div className="container flex h-[70px] items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="text-xl font-bold text-white font-heading tracking-wide">
+          <Link
+            href="/"
+            className="relative h-[50px] w-[120px] text-xl font-bold text-white font-heading tracking-wide"
+          >
             {logo?.url ? (
               <Image
                 src={logo.url}
                 alt={logo.alt || siteName || 'Logo'}
-                width={150} // Default width, can be overridden by CSS or prop
-                height={60} // Default height
-                className="h-12 w-auto object-contain"
+                fill
+                className="object-contain"
+                unoptimized
               />
             ) : (
               siteName
@@ -158,7 +161,7 @@ export function Header({
           {/* CTA Button */}
           <div className="hidden lg:block">
             {ctaButton.enabled && (
-              <Button variant="primary" href={ctaButton.link}>
+              <Button variant="default" href={ctaButton.link}>
                 {ctaButton.label}
               </Button>
             )}
@@ -232,7 +235,7 @@ export function Header({
               ))}
               {ctaButton.enabled && (
                 <div className="pt-4 mt-4 border-t border-white/10">
-                  <Button variant="primary" href={ctaButton.link} className="w-full justify-center">
+                  <Button variant="default" href={ctaButton.link} className="w-full justify-center">
                     {ctaButton.label}
                   </Button>
                 </div>

@@ -73,8 +73,8 @@ export default async function HomePage() {
       service.featuredImage &&
       typeof service.featuredImage === 'object' &&
       'url' in service.featuredImage
-        ? service.featuredImage.url
-        : undefined,
+        ? service.featuredImage
+        : null,
     price: service.price,
     originalPrice: service.originalPrice || undefined,
     priceUnit: service.priceUnit || undefined,

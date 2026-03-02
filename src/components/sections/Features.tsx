@@ -47,11 +47,7 @@ export function Features({
 
         <div className={cn('grid gap-8', gridCols[effectiveColumns])}>
           {features.map((feature, index) => (
-            <Card
-              key={index}
-              className="text-center flex flex-col items-center h-full"
-              padding="lg"
-            >
+            <Card key={index} className="text-center flex flex-col items-center h-full">
               <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10">
                 <Icon name={feature.icon} className="h-8 w-8 text-blue-500" strokeWidth={1.5} />
               </div>

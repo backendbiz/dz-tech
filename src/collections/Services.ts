@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
+import { publicReadAdminWrite } from '@/access'
 
 export const Services: CollectionConfig = {
   slug: 'services',
@@ -8,12 +9,7 @@ export const Services: CollectionConfig = {
     // Updated columns to show Stripe status
     defaultColumns: ['title', 'category', 'price', 'status'],
   },
-  access: {
-    read: () => true,
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
-  },
+  access: publicReadAdminWrite,
   hooks: {
     afterChange: [revalidate],
   },

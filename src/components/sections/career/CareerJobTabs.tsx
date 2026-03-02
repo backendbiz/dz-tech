@@ -103,7 +103,7 @@ export function CareerJobTabs({ jobs }: CareerJobTabsProps) {
               </div>
 
               <div className="flex gap-4">
-                <Button variant="primary" className="rounded! px-8 bg-blue-500 hover:bg-blue-600">
+                <Button variant="default" className="rounded! px-8 bg-blue-500 hover:bg-blue-600">
                   Apply Now
                 </Button>
                 {selectedJob.slug && (

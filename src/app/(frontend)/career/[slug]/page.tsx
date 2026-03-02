@@ -73,7 +73,7 @@ export default async function JobPage({ params }: Props) {
             {job.title}
           </h1>
 
-          <Button variant="primary" className="mt-4" size="lg">
+          <Button variant="default" className="mt-4" size="lg">
             Apply Now
           </Button>
         </div>
@@ -99,7 +99,7 @@ export default async function JobPage({ params }: Props) {
                   {job.responsibilities.map((item, idx) =>
                     item.text ? (
                       <li key={idx} className="flex gap-3 text-gray-600">
-                        <span className="mt-1.5 min-w-[6px] h-[6px] rounded-full bg-blue-500 shrink-0"></span>
+                        <span className="mt-1.5 min-w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
                         <span>{item.text}</span>
                       </li>
                     ) : null,
@@ -116,7 +116,7 @@ export default async function JobPage({ params }: Props) {
                   {job.requirements.map((item, idx) =>
                     item.text ? (
                       <li key={idx} className="flex gap-3 text-gray-600">
-                        <span className="mt-1.5 min-w-[6px] h-[6px] rounded-full bg-blue-500 shrink-0"></span>
+                        <span className="mt-1.5 min-w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
                         <span>{item.text}</span>
                       </li>
                     ) : null,
@@ -126,7 +126,7 @@ export default async function JobPage({ params }: Props) {
             )}
 
             <div className="border-t border-gray-100 pt-8 mt-8 flex justify-center">
-              <Button variant="primary" size="lg" className="px-12">
+              <Button variant="default" size="lg" className="px-12">
                 Apply for this position
               </Button>
             </div>

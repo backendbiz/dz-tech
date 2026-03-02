@@ -5,12 +5,6 @@ import { getPayloadClient } from '@/lib/payload'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import type { Service } from '@/payload-types'
-// Import RichText renderer if available, or just render plain text/html for now if no custom component.
-// Payload 3 usually has a RichText component in @payloadcms/richtext-lexical/react or similar?
-// For now, prompt instruction didn't specify installing rich text renderer, so we will handle strings or skip rich text rendering complexity
-// and just render description. Or check if we have a RichText component in the project.
-// The project structure didn't show one in components/ui.
-// We will look for a simple way to render content or just use description for now as main content.
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -43,7 +37,7 @@ export async function generateStaticParams() {
   const payload = await getPayloadClient()
   const { docs } = await payload.find({
     collection: 'services',
-    limit: 100, // Reasonable limit for SSG
+    limit: 100,
   })
 
   return docs.map((service) => ({
@@ -125,7 +119,7 @@ export default async function ServicePage({ params }: Props) {
 
             {/* Sidebar */}
             <div>
-              <Card className="sticky top-32 border border-gray-200" padding="lg">
+              <Card className="sticky top-32 border border-gray-200 p-8">
                 <div className="mb-6 text-center">
                   <p className="mb-2 text-sm text-gray-500">Service Starts From</p>
                   <div className="flex items-baseline justify-center gap-2">

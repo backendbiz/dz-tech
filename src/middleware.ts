@@ -1,10 +1,51 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { checkAPIRateLimit, checkAuthRateLimit, checkPaymentRateLimit } from '@/lib/rate-limit'
+import { applySecurityHeaders, validateSecurityHeaders } from '@/lib/security-headers'
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl
   const hostname = request.headers.get('host') || ''
   const referer = request.headers.get('referer') || ''
+
+  // Apply security headers validation for API routes
+  if (url.pathname.startsWith('/api/')) {
+    // Validate security headers
+    const securityCheck = validateSecurityHeaders(request)
+    if (!securityCheck.valid) {
+      return new NextResponse(JSON.stringify({ error: securityCheck.error || 'Invalid request' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Apply rate limiting based on route type
+    let rateLimitCheck
+    if (url.pathname.includes('/api/users/')) {
+      rateLimitCheck = checkAuthRateLimit(request)
+    } else if (url.pathname.includes('/api/orders') || url.pathname.includes('/checkout')) {
+      rateLimitCheck = checkPaymentRateLimit(request)
+    } else {
+      rateLimitCheck = checkAPIRateLimit(request)
+    }
+
+    if (!rateLimitCheck.allowed) {
+      const response = new NextResponse(
+        JSON.stringify({
+          error: 'Too many requests',
+          retryAfter: rateLimitCheck.retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitCheck.retryAfter || 60),
+          },
+        },
+      )
+      return applySecurityHeaders(response)
+    }
+  }
 
   // Define domains
   // Clean hostname to remove port for comparison logic if needed, but let's handle full host string
@@ -54,19 +95,21 @@ export function middleware(request: NextRequest) {
   // 3. New Main Domain (checkout.dztech.shop)
   // Maps to standard routes automatically.
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+
+  // Apply security headers to all responses
+  return applySecurityHeaders(response)
 }
 
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - admin (PayloadCMS admin)
+     * Keep api and admin routes for security header/rate limit processing
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|admin).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

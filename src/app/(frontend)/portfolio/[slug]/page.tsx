@@ -150,10 +150,9 @@ export default async function ProjectPage({ params }: Props) {
                   {project.liveUrl && (
                     <div className="pt-4">
                       <Button
-                        variant="primary"
+                        variant="default"
                         className="w-full justify-center"
                         href={project.liveUrl}
-                        // @ts-expect-error - external link handling in Button might need target prop passed through if supported, otherwise just href is fine.
                         target="_blank"
                         rel="noopener noreferrer"
                       >

@@ -32,16 +32,19 @@ export function CTABanner({
   return (
     <section className={cn('py-16 md:py-20', variants[variant], className)}>
       <div className="container text-center">
-        <h2 className={cn('mx-auto max-w-3xl text-3xl font-bold md:text-4xl', 
-          variant === 'light' ? 'text-navy-900' : 'text-white'
-        )}>
+        <h2
+          className={cn(
+            'mx-auto max-w-3xl text-3xl font-bold md:text-4xl',
+            variant === 'light' ? 'text-navy-900' : 'text-white',
+          )}
+        >
           {heading}
         </h2>
         {description && (
           <p
             className={cn(
               'mx-auto mt-4 max-w-2xl text-lg',
-              variant === 'light' ? 'text-gray-600' : 'text-white/80'
+              variant === 'light' ? 'text-gray-600' : 'text-white/80',
             )}
           >
             {description}
@@ -51,7 +54,7 @@ export function CTABanner({
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             {ctaText && ctaLink && (
               <Button
-                variant={variant === 'light' ? 'primary' : 'primary'}
+                variant={variant === 'light' ? 'default' : 'default'}
                 size="lg"
                 href={ctaLink}
               >
@@ -63,7 +66,11 @@ export function CTABanner({
                 variant="outline"
                 size="lg"
                 href={secondaryCta.link}
-                className={variant !== 'light' ? 'border-white text-white hover:bg-white hover:text-navy-900' : ''}
+                className={
+                  variant !== 'light'
+                    ? 'border-white text-white hover:bg-white hover:text-navy-900'
+                    : ''
+                }
               >
                 {secondaryCta.text}
               </Button>

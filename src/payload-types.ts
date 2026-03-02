@@ -1404,7 +1404,14 @@ export interface SiteSetting {
   id: string;
   siteName: string;
   siteDescription?: string | null;
-  logo?: (string | null) | Media;
+  /**
+   * Logo for light mode
+   */
+  logoLight?: (string | null) | Media;
+  /**
+   * Logo for dark mode
+   */
+  logoDark?: (string | null) | Media;
   favicon?: (string | null) | Media;
   email?: string | null;
   phone?: string | null;
@@ -1505,7 +1512,8 @@ export interface Footer {
 export interface SiteSettingsSelect<T extends boolean = true> {
   siteName?: T;
   siteDescription?: T;
-  logo?: T;
+  logoLight?: T;
+  logoDark?: T;
   favicon?: T;
   email?: T;
   phone?: T;
