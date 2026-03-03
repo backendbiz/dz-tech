@@ -59,12 +59,6 @@ export function validateSecurityHeaders(request: Request): {
 } {
   // Check for required headers
   const contentType = request.headers.get('content-type')
-  const userAgent = request.headers.get('user-agent')
-
-  // Reject requests without user agent (bots/scrapers often omit this)
-  if (!userAgent || userAgent.length < 10) {
-    return { valid: false, error: 'Invalid user agent' }
-  }
 
   // For POST/PUT/PATCH requests, ensure proper content-type
   if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
