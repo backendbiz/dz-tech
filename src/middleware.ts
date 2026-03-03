@@ -86,8 +86,8 @@ export function middleware(request: NextRequest) {
     // If request attempts to access /payment-standalone directly, let it pass (or you could redirect to /checkout for cleanliness)
 
     // Prevent access to other pages like /services, /about etc on checkout subdomain
-    // But allow internal Next.js paths that might not be caught by matcher exclusions
-    if (!url.pathname.startsWith('/_next')) {
+    // But allow API routes and internal Next.js paths
+    if (!url.pathname.startsWith('/_next') && !url.pathname.startsWith('/api/')) {
       return NextResponse.redirect(new URL('/checkout', request.url))
     }
   }
