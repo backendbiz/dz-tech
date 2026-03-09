@@ -2,7 +2,7 @@ import { getPayloadClient } from '@/lib/payload'
 import { NextResponse } from 'next/server'
 import { generateCheckoutToken } from '@/lib/checkout-token'
 import { generateOrderId } from '@/lib/order-generator'
-import type { Service, Provider } from '@/payload-types'
+import type { Provider } from '@/payload-types'
 
 /**
  * POST /api/v1/create-checkout

@@ -73,12 +73,6 @@ export async function POST(req: Request) {
     const { apiKey, externalId } = body
     const payload = await getPayloadClient()
 
-    let service: Service | undefined
-    let providerId: string | undefined
-    let providerName: string | undefined
-    let successRedirectUrl: string | undefined
-    let cancelRedirectUrl: string | undefined
-
     // --- Authenticate via API key ---
     if (!apiKey) {
       return NextResponse.json({ error: 'apiKey is required' }, { status: 400 })
@@ -89,11 +83,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid or inactive API key' }, { status: 401 })
     }
 
-    service = providerResult.service
-    providerId = providerResult.provider.id
-    providerName = providerResult.provider.name
-    successRedirectUrl = providerResult.provider.successRedirectUrl || undefined
-    cancelRedirectUrl = providerResult.provider.cancelRedirectUrl || undefined
+    const service = providerResult.service
+    const providerId = providerResult.provider.id
+    const providerName = providerResult.provider.name
 
     console.log(
       `[CREATE-ORDER] Provider "${providerName}" authenticated, service: ${service.title}`,
