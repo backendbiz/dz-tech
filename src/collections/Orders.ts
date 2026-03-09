@@ -1,6 +1,15 @@
 import type { CollectionConfig } from 'payload'
 import { anyone } from '@/access'
 
+/**
+ * Show a field only when the order's paymentMethod matches one of the given methods.
+ * Set `includeUnset` to also match orders where paymentMethod hasn't been set yet.
+ */
+const paymentMethodCondition = (methods: string[], { includeUnset = false } = {}) => {
+  return (data: Record<string, unknown>) =>
+    methods.includes(data.paymentMethod as string) || (includeUnset && !data.paymentMethod)
+}
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
@@ -93,6 +102,7 @@ export const Orders: CollectionConfig = {
       admin: {
         readOnly: true,
         position: 'sidebar',
+        condition: paymentMethodCondition(['cashapp'], { includeUnset: true }),
       },
     },
     {
@@ -102,6 +112,31 @@ export const Orders: CollectionConfig = {
       admin: {
         readOnly: true,
         position: 'sidebar',
+        condition: paymentMethodCondition(['cashapp'], { includeUnset: true }),
+      },
+    },
+    {
+      name: 'paymentMethod',
+      type: 'select',
+      options: [
+        { label: 'Cash App', value: 'cashapp' },
+        { label: 'PayPal', value: 'paypal' },
+      ],
+      defaultValue: 'cashapp',
+      admin: {
+        position: 'sidebar',
+        description: 'Payment method used for this order',
+      },
+    },
+    {
+      name: 'paypalOrderId',
+      type: 'text',
+      index: true,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'PayPal Order ID (for PayPal payments)',
+        condition: paymentMethodCondition(['paypal']),
       },
     },
 

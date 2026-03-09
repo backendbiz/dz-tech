@@ -185,6 +185,8 @@ export async function cancelPaymentIntent(
 export const STRIPE_CONFIG = {
   // Supported payment methods - Cash App only (requires US Stripe account)
   paymentMethods: ['cashapp'] as const,
+  // All available payment methods (including non-Stripe)
+  allPaymentMethods: ['cashapp', 'paypal'] as const,
   // Webhook event types we handle
   webhookEvents: [
     'payment_intent.succeeded',

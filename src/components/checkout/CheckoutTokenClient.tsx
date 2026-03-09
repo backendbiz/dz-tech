@@ -7,6 +7,9 @@ import type { IconName } from '@/components/ui'
 import Link from 'next/link'
 import { StripeProvider } from '@/components/checkout/StripeProvider'
 import { CashAppPaymentForm } from '@/components/checkout/CashAppPaymentForm'
+import { PayPalPaymentForm } from '@/components/checkout/PayPalPaymentForm'
+
+type PaymentMethodType = 'cashapp' | 'paypal'
 
 interface ServiceData {
   id: string
@@ -29,6 +32,7 @@ interface CheckoutState {
   provider: string | null
   successRedirectUrl: string | null
   cancelRedirectUrl: string | null
+  serviceId: string | null
 }
 
 // Payment result status from Stripe redirect
@@ -80,6 +84,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
     provider: null,
     successRedirectUrl: null,
     cancelRedirectUrl: null,
+    serviceId: null,
   })
 
   const [copied, setCopied] = useState(false)
@@ -89,6 +94,8 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
   >(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('cashapp')
+  const hasPayPal = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
 
   // Fetch checkout session by token
   useEffect(() => {
@@ -131,6 +138,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
           provider: data.provider || null,
           successRedirectUrl: data.successRedirectUrl || null,
           cancelRedirectUrl: data.cancelRedirectUrl || null,
+          serviceId: data.serviceId || null,
         }))
       } catch (error) {
         console.error('Checkout initialization error:', error)
@@ -543,9 +551,49 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
             </div>
           </div>
 
+          {/* Payment Method Selector */}
+          {hasPayPal && (
+            <div className="mx-6 mb-4">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                Payment Method
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('cashapp')}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                    selectedPaymentMethod === 'cashapp'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-sm font-medium">Cash App</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('paypal')}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                    selectedPaymentMethod === 'paypal'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-sm font-medium">PayPal</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Payment Form */}
           <div className="px-6 pb-8">
-            {state.clientSecret ? (
+            {selectedPaymentMethod === 'paypal' && hasPayPal ? (
+              <PayPalPaymentForm
+                serviceId={state.serviceId || ''}
+                orderId={state.paymentOrderId || ''}
+                amount={service.price}
+                returnUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+              />
+            ) : state.clientSecret ? (
               <StripeProvider
                 clientSecret={state.clientSecret}
                 publishableKey={state.stripePublishableKey || undefined}

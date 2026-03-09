@@ -648,6 +648,14 @@ export interface Order {
   quantity?: number | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
+  /**
+   * Payment method used for this order
+   */
+  paymentMethod?: ('cashapp' | 'paypal') | null;
+  /**
+   * PayPal Order ID (for PayPal payments)
+   */
+  paypalOrderId?: string | null;
   customerEmail?: string | null;
   disputeId?: string | null;
   disputeStatus?:
@@ -1297,6 +1305,8 @@ export interface OrdersSelect<T extends boolean = true> {
   quantity?: T;
   stripeSessionId?: T;
   stripePaymentIntentId?: T;
+  paymentMethod?: T;
+  paypalOrderId?: T;
   customerEmail?: T;
   disputeId?: T;
   disputeStatus?: T;
