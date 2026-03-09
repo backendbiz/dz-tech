@@ -52,6 +52,8 @@ export function PayPalPaymentForm({
           clientId,
           currency: 'USD',
           intent: 'capture',
+          enableFunding: 'venmo',
+          disableFunding: 'card,credit',
         }}
       >
         <PayPalButtons
