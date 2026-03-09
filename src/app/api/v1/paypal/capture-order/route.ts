@@ -111,7 +111,7 @@ export async function POST(request: Request) {
               amount: order.total,
               status: 'paid',
               paypalOrderId,
-              paymentMethod: 'paypal',
+              paymentMethodType: 'paypal' as const,
               timestamp: new Date().toISOString(),
             }
 

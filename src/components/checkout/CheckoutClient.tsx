@@ -116,15 +116,14 @@ export function CheckoutClient() {
         }
         const currentService: ServiceData = await serviceResponse.json()
 
-        // 2. Then, create a payment intent
-        const paymentResponse = await fetch('/api/v1/create-payment-intent', {
+        // 2. Then, create a checkout session (no Stripe PI upfront)
+        const paymentResponse = await fetch('/api/v1/create-checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             serviceId,
-            orderId,
           }),
         })
 

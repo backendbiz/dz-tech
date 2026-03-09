@@ -50,7 +50,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     const cancelRedirectUrl =
       provider && typeof provider !== 'string' ? provider.cancelRedirectUrl : undefined
 
-    // If order has a payment intent, retrieve the client secret
+    // If order has a payment intent, retrieve the client secret.
+    // Orders created via /api/v1/create-order won't have one yet — that's
+    // fine; the checkout page will lazily create it via /api/v1/initialize-payment.
     let clientSecret: string | null = null
     let effectiveStatus = order.status
 

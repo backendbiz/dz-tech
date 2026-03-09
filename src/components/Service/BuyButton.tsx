@@ -16,8 +16,8 @@ export function BuyButton({ serviceId, label = 'Get Started' }: BuyButtonProps) 
   const handleBuy = async () => {
     setLoading(true)
     try {
-      // Create payment intent and get a secure checkout token
-      const response = await fetch('/api/v1/create-payment-intent', {
+      // Create order and get a secure checkout token
+      const response = await fetch('/api/v1/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId }),

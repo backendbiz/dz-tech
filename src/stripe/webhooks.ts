@@ -33,6 +33,7 @@ async function notifyProvider(
     amount: order.total,
     status: order.status,
     stripePaymentIntentId: order.stripePaymentIntentId,
+    paymentMethodType: 'cashapp_stripe' as const,
     timestamp: new Date().toISOString(),
   }
 

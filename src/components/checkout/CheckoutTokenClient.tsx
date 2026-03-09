@@ -94,8 +94,56 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
   >(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('cashapp')
   const hasPayPal = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
+  // Default to PayPal when available to avoid unnecessary Stripe PI creation
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>(
+    hasPayPal ? 'paypal' : 'cashapp',
+  )
+  const [initializingStripe, setInitializingStripe] = useState(false)
+  const [stripeInitError, setStripeInitError] = useState<string | null>(null)
+
+  // Lazily create Stripe PaymentIntent when user selects Cash App and none exists
+  const initializeStripePayment = useCallback(async () => {
+    if (state.clientSecret || !state.paymentOrderId || initializingStripe) return
+    setInitializingStripe(true)
+    setStripeInitError(null)
+    try {
+      const res = await fetch('/api/v1/initialize-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: state.paymentOrderId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to initialize Cash App payment')
+      }
+      const data = await res.json()
+      setState((prev) => ({ ...prev, clientSecret: data.clientSecret }))
+    } catch (err) {
+      console.error('Failed to initialize Stripe payment:', err)
+      setStripeInitError(err instanceof Error ? err.message : 'Failed to initialize payment')
+    } finally {
+      setInitializingStripe(false)
+    }
+  }, [state.clientSecret, state.paymentOrderId, initializingStripe])
+
+  // When Cash App is selected, trigger lazy Stripe PI creation if needed
+  useEffect(() => {
+    if (
+      selectedPaymentMethod === 'cashapp' &&
+      !state.clientSecret &&
+      state.paymentOrderId &&
+      !paymentStatus
+    ) {
+      initializeStripePayment()
+    }
+  }, [
+    selectedPaymentMethod,
+    state.clientSecret,
+    state.paymentOrderId,
+    paymentStatus,
+    initializeStripePayment,
+  ])
 
   // Fetch checkout session by token
   useEffect(() => {
@@ -604,12 +652,29 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
                   returnUrl={typeof window !== 'undefined' ? window.location.href : undefined}
                 />
               </StripeProvider>
+            ) : stripeInitError ? (
+              <div className="text-center py-8">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 mb-3">
+                  <Icon name="alert-circle" className="h-5 w-5 text-red-500" />
+                </div>
+                <p className="text-red-600 text-sm mb-3">{stripeInitError}</p>
+                <button
+                  onClick={initializeStripePayment}
+                  className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 mb-3">
                   <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 </div>
-                <p className="text-gray-500 text-sm">Loading payment options...</p>
+                <p className="text-gray-500 text-sm">
+                  {initializingStripe
+                    ? 'Initializing Cash App payment...'
+                    : 'Loading payment options...'}
+                </p>
               </div>
             )}
           </div>
