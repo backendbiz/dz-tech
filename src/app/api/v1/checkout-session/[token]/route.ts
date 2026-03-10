@@ -132,6 +132,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
         icon: service.icon || undefined,
         priceUnit: service.priceUnit || undefined,
       },
+      // Allowed payment methods for this order
+      allowedPaymentMethods: order.allowedPaymentMethods || ['cashapp', 'paypal'],
       // Provider info
       ...(providerName && { provider: providerName }),
       ...(successRedirectUrl && { successRedirectUrl }),

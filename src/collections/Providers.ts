@@ -83,6 +83,20 @@ export const Providers: CollectionConfig = {
       },
     },
     {
+      name: 'paymentMethods',
+      type: 'select',
+      hasMany: true,
+      required: true,
+      defaultValue: ['cashapp', 'paypal'],
+      options: [
+        { label: 'Cash App (Stripe)', value: 'cashapp' },
+        { label: 'PayPal / Venmo', value: 'paypal' },
+      ],
+      admin: {
+        description: 'Payment methods available on the checkout page for this provider',
+      },
+    },
+    {
       name: 'webhookUrl',
       type: 'text',
       label: 'Webhook URL',

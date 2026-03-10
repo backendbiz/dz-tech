@@ -129,6 +129,20 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'allowedPaymentMethods',
+      type: 'select',
+      hasMany: true,
+      options: [
+        { label: 'Cash App', value: 'cashapp' },
+        { label: 'PayPal', value: 'paypal' },
+      ],
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Payment methods the user can choose from on checkout',
+      },
+    },
+    {
       name: 'paypalOrderId',
       type: 'text',
       index: true,
