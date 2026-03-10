@@ -33,6 +33,7 @@ interface CheckoutState {
   successRedirectUrl: string | null
   cancelRedirectUrl: string | null
   serviceId: string | null
+  allowedPaymentMethods: PaymentMethodType[]
 }
 
 // Payment result status from Stripe redirect
@@ -52,6 +53,7 @@ interface CheckoutSessionData {
   provider?: string
   successRedirectUrl?: string
   cancelRedirectUrl?: string
+  allowedPaymentMethods?: PaymentMethodType[]
 }
 
 interface CheckoutTokenClientProps {
@@ -85,6 +87,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
     successRedirectUrl: null,
     cancelRedirectUrl: null,
     serviceId: null,
+    allowedPaymentMethods: ['cashapp', 'paypal'],
   })
 
   const [copied, setCopied] = useState(false)
@@ -94,11 +97,7 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   const [paymentStatus, setPaymentStatus] = useState<
     'succeeded' | 'processing' | 'failed' | 'pending' | 'disputed' | null
   >(null)
-  const hasPayPal = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
-  // Default to PayPal when available to avoid unnecessary Stripe PI creation
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>(
-    hasPayPal ? 'paypal' : 'cashapp',
-  )
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType | null>(null)
   const [initializingStripe, setInitializingStripe] = useState(false)
   const [stripeInitError, setStripeInitError] = useState<string | null>(null)
 
@@ -176,6 +175,8 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
           setPaymentStatus('disputed')
         }
 
+        const allowed = data.allowedPaymentMethods || ['cashapp', 'paypal']
+
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -187,7 +188,18 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
           successRedirectUrl: data.successRedirectUrl || null,
           cancelRedirectUrl: data.cancelRedirectUrl || null,
           serviceId: data.serviceId || null,
+          allowedPaymentMethods: allowed,
         }))
+
+        // Set default payment method based on allowed methods
+        setSelectedPaymentMethod((prev) => {
+          if (prev) return prev
+          const hasPayPal = Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
+          // Prefer PayPal if allowed and configured to avoid unnecessary Stripe PI
+          if (allowed.includes('paypal') && hasPayPal) return 'paypal'
+          if (allowed.includes('cashapp')) return 'cashapp'
+          return allowed[0]
+        })
       } catch (error) {
         console.error('Checkout initialization error:', error)
         setState((prev) => ({
@@ -599,42 +611,49 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
             </div>
           </div>
 
-          {/* Payment Method Selector */}
-          {hasPayPal && (
+          {/* Payment Method Selector - only show if more than one method is allowed */}
+          {state.allowedPaymentMethods.length > 1 && (
             <div className="mx-6 mb-4">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                 Payment Method
               </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentMethod('cashapp')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
-                    selectedPaymentMethod === 'cashapp'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-sm font-medium">Cash App</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentMethod('paypal')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
-                    selectedPaymentMethod === 'paypal'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-sm font-medium">PayPal</span>
-                </button>
+              <div className={`grid grid-cols-${state.allowedPaymentMethods.length} gap-3`}>
+                {state.allowedPaymentMethods.includes('cashapp') && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('cashapp')}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                      selectedPaymentMethod === 'cashapp'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">Cash App</span>
+                  </button>
+                )}
+                {state.allowedPaymentMethods.includes('paypal') &&
+                  Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('paypal')}
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                        selectedPaymentMethod === 'paypal'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">PayPal</span>
+                    </button>
+                  )}
               </div>
             </div>
           )}
 
           {/* Payment Form */}
           <div className="px-6 pb-8">
-            {selectedPaymentMethod === 'paypal' && hasPayPal ? (
+            {selectedPaymentMethod === 'paypal' &&
+            state.allowedPaymentMethods.includes('paypal') &&
+            Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) ? (
               <PayPalPaymentForm
                 serviceId={state.serviceId || ''}
                 orderId={state.paymentOrderId || ''}

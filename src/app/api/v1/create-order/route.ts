@@ -86,9 +86,29 @@ export async function POST(req: Request) {
     const service = providerResult.service
     const providerId = providerResult.provider.id
     const providerName = providerResult.provider.name
+    const providerMethods = providerResult.provider.paymentMethods || ['cashapp', 'paypal']
+
+    // If the caller specifies a single payment method, lock the order to it
+    let allowedPaymentMethods = providerMethods as string[]
+    if (body.paymentMethod) {
+      const requested = body.paymentMethod as string
+      if (!['cashapp', 'paypal'].includes(requested)) {
+        return NextResponse.json(
+          { error: `Invalid paymentMethod "${requested}". Must be "cashapp" or "paypal".` },
+          { status: 400 },
+        )
+      }
+      if (!(providerMethods as string[]).includes(requested)) {
+        return NextResponse.json(
+          { error: `Payment method "${requested}" is not enabled for this provider.` },
+          { status: 403 },
+        )
+      }
+      allowedPaymentMethods = [requested]
+    }
 
     console.log(
-      `[CREATE-ORDER] Provider "${providerName}" authenticated, service: ${service.title}`,
+      `[CREATE-ORDER] Provider "${providerName}" authenticated, service: ${service.title}, methods: ${allowedPaymentMethods.join(', ')}`,
     )
 
     // --- Determine amount & quantity ---
@@ -172,6 +192,7 @@ export async function POST(req: Request) {
         quantity,
         checkoutToken,
         orderId: clientOrderId,
+        allowedPaymentMethods,
         ...(providerId && { provider: providerId }),
         ...(externalId && { externalId }),
       },

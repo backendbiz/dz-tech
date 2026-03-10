@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     let providerId: string | undefined
     let successRedirectUrl: string | undefined
     let cancelRedirectUrl: string | undefined
+    let allowedPaymentMethods: ('cashapp' | 'paypal')[] = ['cashapp', 'paypal']
 
     try {
       const providers = await payload.find({
@@ -52,6 +53,9 @@ export async function POST(req: Request) {
         providerId = linked.id
         successRedirectUrl = linked.successRedirectUrl || undefined
         cancelRedirectUrl = linked.cancelRedirectUrl || undefined
+        if (linked.paymentMethods && linked.paymentMethods.length > 0) {
+          allowedPaymentMethods = linked.paymentMethods as ('cashapp' | 'paypal')[]
+        }
       }
     } catch {
       // Non-fatal
@@ -69,6 +73,7 @@ export async function POST(req: Request) {
         quantity: 1,
         checkoutToken,
         orderId: clientOrderId,
+        allowedPaymentMethods,
         ...(providerId && { provider: providerId }),
       },
       overrideAccess: true,
