@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { revalidate } from '@/hooks/revalidate'
-import { anyone, publicReadAdminWrite } from '@/access'
+import { anyone } from '@/access'
 
 export const Services: CollectionConfig = {
   slug: 'services',

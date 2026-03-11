@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { generateApiKey } from '@/lib/api-key'
-import { adminOnly, anyone } from '@/access'
+
 
 export const Providers: CollectionConfig = {
   slug: 'providers',

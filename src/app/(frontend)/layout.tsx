@@ -119,7 +119,7 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       url: link.url,
     })) || []
 
-  const logoLight =
+  const _logoLight =
     siteSettings.logoLight &&
     typeof siteSettings.logoLight === 'object' &&
     'url' in siteSettings.logoLight

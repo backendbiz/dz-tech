@@ -333,6 +333,45 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
 
   const displayOrderId = state.paymentOrderId
 
+  // Handle payment method selection — persist to the order, then show checkout
+  const handleConfirmPaymentMethod = async (method: PaymentMethodType) => {
+    if (selectingMethod) return
+    setSelectingMethod(true)
+    try {
+      const res = await fetch('/api/v1/select-payment-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: state.paymentOrderId, paymentMethod: method }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to select payment method')
+      }
+      setConfirmedPaymentMethod(method)
+    } catch (err) {
+      console.error('Failed to select payment method:', err)
+      setState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to select payment method',
+      }))
+    } finally {
+      setSelectingMethod(false)
+    }
+  }
+
+  // If only one payment method is available, auto-select it
+  const effectiveAllowed = state.allowedPaymentMethods.filter(
+    (m) => m !== 'paypal' || Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID),
+  )
+
+  // Auto-confirm if only one method is available and not yet confirmed
+  useEffect(() => {
+    if (!confirmedPaymentMethod && effectiveAllowed.length === 1 && !selectingMethod) {
+      handleConfirmPaymentMethod(effectiveAllowed[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmedPaymentMethod, effectiveAllowed.length])
+
   // Show verifying payment status (when we have redirect params but haven't verified yet)
   if (paymentIntentParam && paymentStatus === null) {
     return (
@@ -567,45 +606,6 @@ export function CheckoutTokenClient({ token }: CheckoutTokenClientProps) {
   }
 
   const service = state.service!
-
-  // Handle payment method selection — persist to the order, then show checkout
-  const handleConfirmPaymentMethod = async (method: PaymentMethodType) => {
-    if (selectingMethod) return
-    setSelectingMethod(true)
-    try {
-      const res = await fetch('/api/v1/select-payment-method', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: state.paymentOrderId, paymentMethod: method }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to select payment method')
-      }
-      setConfirmedPaymentMethod(method)
-    } catch (err) {
-      console.error('Failed to select payment method:', err)
-      setState((prev) => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to select payment method',
-      }))
-    } finally {
-      setSelectingMethod(false)
-    }
-  }
-
-  // If only one payment method is available, auto-select it
-  const effectiveAllowed = state.allowedPaymentMethods.filter(
-    (m) => m !== 'paypal' || Boolean(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID),
-  )
-
-  // Auto-confirm if only one method is available and not yet confirmed
-  useEffect(() => {
-    if (!confirmedPaymentMethod && effectiveAllowed.length === 1 && !selectingMethod) {
-      handleConfirmPaymentMethod(effectiveAllowed[0])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmedPaymentMethod, effectiveAllowed.length])
 
   // ─── Phase 1: Payment Method Selection ─────────────────────────────
   if (!confirmedPaymentMethod && effectiveAllowed.length > 1) {

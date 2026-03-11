@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { anyone, adminOnly } from '@/access'
+import { anyone } from '@/access'
 
 export const ContactRequests: CollectionConfig = {
   slug: 'contact-requests',
