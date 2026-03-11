@@ -1,7 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { generateApiKey } from '@/lib/api-key'
 
-
 export const Providers: CollectionConfig = {
   slug: 'providers',
   admin: {
