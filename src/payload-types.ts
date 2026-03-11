@@ -648,6 +648,18 @@ export interface Order {
   quantity?: number | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
+  /**
+   * Payment method used for this order
+   */
+  paymentMethod?: ('cashapp' | 'paypal') | null;
+  /**
+   * Payment methods the user can choose from on checkout
+   */
+  allowedPaymentMethods?: ('cashapp' | 'paypal')[] | null;
+  /**
+   * PayPal Order ID (for PayPal payments)
+   */
+  paypalOrderId?: string | null;
   customerEmail?: string | null;
   disputeId?: string | null;
   disputeStatus?:
@@ -697,6 +709,10 @@ export interface Provider {
    * Only active providers can process payments
    */
   status: 'active' | 'inactive';
+  /**
+   * Payment methods available on the checkout page for this provider
+   */
+  paymentMethods: ('cashapp' | 'paypal')[];
   /**
    * URL to notify when a payment is completed (POST request with payment details)
    */
@@ -1297,6 +1313,9 @@ export interface OrdersSelect<T extends boolean = true> {
   quantity?: T;
   stripeSessionId?: T;
   stripePaymentIntentId?: T;
+  paymentMethod?: T;
+  allowedPaymentMethods?: T;
+  paypalOrderId?: T;
   customerEmail?: T;
   disputeId?: T;
   disputeStatus?: T;
@@ -1348,6 +1367,7 @@ export interface ProvidersSelect<T extends boolean = true> {
   apiKey?: T;
   service?: T;
   status?: T;
+  paymentMethods?: T;
   webhookUrl?: T;
   successRedirectUrl?: T;
   cancelRedirectUrl?: T;

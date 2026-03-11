@@ -17,6 +17,11 @@ const nextConfig = {
         hostname: '*.dztech.shop',
         pathname: '/api/media/file/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'dev-s3-api.bitloader.shop',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (webpackConfig) => {
