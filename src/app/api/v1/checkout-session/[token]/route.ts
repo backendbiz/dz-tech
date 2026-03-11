@@ -134,6 +134,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       },
       // Allowed payment methods for this order
       allowedPaymentMethods: order.allowedPaymentMethods || ['cashapp', 'paypal'],
+      // Selected payment method (null if user hasn't chosen yet)
+      paymentMethod: order.paymentMethod || null,
       // Provider info
       ...(providerName && { provider: providerName }),
       ...(successRedirectUrl && { successRedirectUrl }),

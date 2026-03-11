@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       amount: service.price,
       serviceName: service.title,
       serviceId: service.id,
+      allowedPaymentMethods,
       ...(successRedirectUrl && { successRedirectUrl }),
       ...(cancelRedirectUrl && { cancelRedirectUrl }),
     })
