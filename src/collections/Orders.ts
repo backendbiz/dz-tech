@@ -122,10 +122,9 @@ export const Orders: CollectionConfig = {
         { label: 'Cash App', value: 'cashapp' },
         { label: 'PayPal', value: 'paypal' },
       ],
-      defaultValue: 'cashapp',
       admin: {
         position: 'sidebar',
-        description: 'Payment method used for this order',
+        description: 'Payment method selected by the user for this order',
       },
     },
     {
