@@ -22,7 +22,7 @@ export const securityHeaders = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Required for Next.js
     "style-src 'self' 'unsafe-inline'", // Required for styled-jsx
-    "img-src 'self' blob: data: https://app-dev.dztech.shop https://app.dztech.shop  https://dev-s3-api.bitloader.shop",
+    "img-src 'self' blob: data: https://app-dev.dztech.shop https://app.dztech.shop https://checkout.dztech.shop https://dev-s3-api.bitloader.shop",
     "font-src 'self'",
     "connect-src 'self' https://*.stripe.com",
     "frame-src 'self' https://*.stripe.com",
