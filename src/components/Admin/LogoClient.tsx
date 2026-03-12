@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { cn } from '@/utils/cn'
 
 interface LogoClientProps {
   darkLogoUrl: string | null
@@ -45,9 +44,9 @@ export const LogoClient: React.FC<LogoClientProps> = ({ darkLogoUrl, lightLogoUr
   const logoUrl = getLogoUrl()
 
   return (
-    <div className="flex items-center gap-2 text-lg font-semibold text-[var(--theme-text)]">
+    <div className="flex items-center gap-2 text-lg font-semibold text-(--theme-text)">
       {logoUrl ? (
-        <div className="relative h-7 w-auto min-w-[28px]">
+        <div className="relative h-7 w-auto min-w-7">
           <Image
             src={logoUrl}
             alt={logoText}
