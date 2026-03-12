@@ -4,7 +4,6 @@ import { LogoClient } from './LogoClient'
 
 export const AdminLogo: React.FC = async () => {
   const settings = await getSiteSettings()
-  console.log('settings', settings)
 
   const darkLogo =
     settings?.logoDark && typeof settings.logoDark === 'object'
