@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     const revenueByProvider = new Map<
       string,
       ProviderRevenue & {
-        servicesBySlug: Map<
+        paymentMethodsMap: Map<
           string,
           { name: string; slug: string; revenue: number; orderCount: number }
         >
@@ -83,53 +83,62 @@ export async function GET(request: Request) {
     >()
 
     for (const order of result.docs) {
+      if (statuses.length > 0) {
+        if (!statuses.includes(order.status as string)) continue
+      } else {
+        if (order.status !== 'paid') continue
+      }
+
       const provider = order.provider as { name: string; slug: string } | undefined
       const providerName = provider?.name || 'Direct Orders'
       const providerSlug = provider?.slug || 'direct'
-      const serviceData =
-        order.service && typeof order.service === 'object'
-          ? (order.service as { name?: string; slug?: string })
-          : undefined
+      
+      // Extract payment method from order (default to 'unknown' or 'cashapp' if missing on legacy orders)
+      const rawMethod = order.paymentMethod as string || 'unknown'
+      const methodName = rawMethod.charAt(0).toUpperCase() + rawMethod.slice(1) // e.g. "Cashapp", "Paypal", "Unknown"
+      const methodSlug = rawMethod
 
       const existing = revenueByProvider.get(providerSlug)
       if (existing) {
         existing.revenue += order.total || 0
         existing.orderCount += 1
 
-        // Track service breakdown
-        if (serviceData?.slug) {
-          const serviceEntry = existing.servicesBySlug.get(serviceData.slug)
-          if (serviceEntry) {
-            serviceEntry.revenue += order.total || 0
-            serviceEntry.orderCount += 1
+        // Track payment method breakdown
+        if (methodSlug) {
+          const methodEntry = existing.paymentMethodsMap.get(methodSlug)
+          if (methodEntry) {
+            methodEntry.revenue += order.total || 0
+            methodEntry.orderCount += 1
           } else {
-            existing.servicesBySlug.set(serviceData.slug, {
-              name: serviceData.name || serviceData.slug,
-              slug: serviceData.slug,
+            existing.paymentMethodsMap.set(methodSlug, {
+              name: methodName,
+              slug: methodSlug,
               revenue: order.total || 0,
               orderCount: 1,
             })
           }
         }
       } else {
-        const servicesBySlug = new Map<
+        const paymentMethodsMap = new Map<
           string,
           { name: string; slug: string; revenue: number; orderCount: number }
         >()
-        if (serviceData?.slug) {
-          servicesBySlug.set(serviceData.slug, {
-            name: serviceData.name || serviceData.slug,
-            slug: serviceData.slug,
+        
+        if (methodSlug) {
+          paymentMethodsMap.set(methodSlug, {
+            name: methodName,
+            slug: methodSlug,
             revenue: order.total || 0,
             orderCount: 1,
           })
         }
+        
         revenueByProvider.set(providerSlug, {
           providerName,
           providerSlug,
           revenue: order.total || 0,
           orderCount: 1,
-          servicesBySlug,
+          paymentMethodsMap,
         })
       }
     }
@@ -141,7 +150,7 @@ export async function GET(request: Request) {
         providerSlug: p.providerSlug,
         revenue: p.revenue,
         orderCount: p.orderCount,
-        services: Array.from(p.servicesBySlug.values()).sort((a, b) => b.revenue - a.revenue),
+        paymentMethods: Array.from(p.paymentMethodsMap.values()).sort((a, b) => b.revenue - a.revenue),
       }))
       .sort((a, b) => b.revenue - a.revenue)
 

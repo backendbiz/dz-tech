@@ -649,7 +649,7 @@ export interface Order {
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
   /**
-   * Payment method used for this order
+   * Payment method selected by the user for this order
    */
   paymentMethod?: ('cashapp' | 'paypal') | null;
   /**
