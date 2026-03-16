@@ -1,14 +1,6 @@
-import { getPayloadClient } from '@/lib/payload'
+import { getDb } from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
-import type { Where } from 'payload'
-
-interface ProviderRevenue {
-  providerName: string
-  providerSlug: string
-  revenue: number
-  orderCount: number
-  services?: { name: string; slug: string; revenue: number; orderCount: number }[]
-}
+import { ObjectId } from 'mongodb'
 
 export async function GET(request: Request) {
   try {
@@ -18,141 +10,129 @@ export async function GET(request: Request) {
     const service = searchParams.get('service')
     const statuses = searchParams.getAll('status')
 
-    const payload = await getPayloadClient()
+    const db = await getDb()
+    const ordersCollection = db.collection('orders')
 
-    // Build filter conditions
-    const filters: Where[] = []
+    // Build $match stage (mirrors the previous Payload Where filters)
+    const match: Record<string, unknown> = {}
+
+    // Status filter — default to 'paid' if none provided
+    const activeStatuses = statuses.length > 0 ? statuses : ['paid']
+    match.status = activeStatuses.length === 1 ? activeStatuses[0] : { $in: activeStatuses }
 
     // Date filter
     if (from || to) {
-      const createdAtFilter: Record<string, string> = {}
-      if (from) {
-        createdAtFilter.greater_than_equal = new Date(from).toISOString()
-      }
+      const dateFilter: Record<string, Date> = {}
+      if (from) dateFilter.$gte = new Date(from)
       if (to) {
         const toDate = new Date(to)
         toDate.setHours(23, 59, 59, 999)
-        createdAtFilter.less_than_equal = toDate.toISOString()
+        dateFilter.$lte = toDate
       }
-      filters.push({ createdAt: createdAtFilter })
-    }
-
-    // Status filter (multiple statuses supported)
-    if (statuses.length > 0) {
-      if (statuses.length === 1) {
-        filters.push({ status: { equals: statuses[0] } })
-      } else {
-        filters.push({ status: { in: statuses } })
-      }
-    } else {
-      // Default to paid only if no status specified
-      filters.push({ status: { equals: 'paid' } })
+      match.createdAt = dateFilter
     }
 
     // Service filter
     if (service) {
-      filters.push({ service: { equals: service } })
+      match.service = new ObjectId(service)
     }
 
-    // Build final where clause
-    const whereClause: Where =
-      filters.length > 1
-        ? { and: filters }
-        : filters.length === 1
-          ? filters[0]
-          : { status: { equals: 'paid' } }
+    const pipeline = [
+      // 1. Filter orders
+      { $match: match },
 
-    // Get orders with filters
-    const result = await payload.find({
-      collection: 'orders',
-      where: whereClause,
-      depth: 2, // Populate provider and service
-      limit: 1000,
-      overrideAccess: true,
-    })
+      // 2. Normalize paymentMethod early so nulls become 'unknown'
+      {
+        $addFields: {
+          paymentMethod: { $ifNull: ['$paymentMethod', 'unknown'] },
+        },
+      },
 
-    // Group revenue by provider
-    const revenueByProvider = new Map<
-      string,
-      ProviderRevenue & {
-        paymentMethodsMap: Map<
-          string,
-          { name: string; slug: string; revenue: number; orderCount: number }
-        >
-      }
-    >()
+      // 3. First group: provider + paymentMethod → subtotals
+      {
+        $group: {
+          _id: {
+            provider: '$provider', // ObjectId or null for direct orders
+            paymentMethod: '$paymentMethod',
+          },
+          revenue: { $sum: '$total' },
+          orderCount: { $sum: 1 },
+        },
+      },
 
-    for (const order of result.docs) {
-      if (statuses.length > 0) {
-        if (!statuses.includes(order.status as string)) continue
-      } else {
-        if (order.status !== 'paid') continue
-      }
+      // 4. Second group: provider only → roll up paymentMethod breakdown
+      {
+        $group: {
+          _id: '$_id.provider',
+          revenue: { $sum: '$revenue' },
+          orderCount: { $sum: '$orderCount' },
+          paymentMethods: {
+            $push: {
+              slug: '$_id.paymentMethod',
+              revenue: '$revenue',
+              orderCount: '$orderCount',
+            },
+          },
+        },
+      },
 
-      const provider = order.provider as { name: string; slug: string } | undefined
-      const providerName = provider?.name || 'Direct Orders'
-      const providerSlug = provider?.slug || 'direct'
-      
-      // Extract payment method from order (default to 'unknown' or 'cashapp' if missing on legacy orders)
-      const rawMethod = order.paymentMethod as string || 'unknown'
-      const methodName = rawMethod.charAt(0).toUpperCase() + rawMethod.slice(1) // e.g. "Cashapp", "Paypal", "Unknown"
-      const methodSlug = rawMethod
+      // 5. Lookup provider name + slug from providers collection
+      {
+        $lookup: {
+          from: 'providers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'providerData',
+        },
+      },
 
-      const existing = revenueByProvider.get(providerSlug)
-      if (existing) {
-        existing.revenue += order.total || 0
-        existing.orderCount += 1
-
-        // Track payment method breakdown
-        if (methodSlug) {
-          const methodEntry = existing.paymentMethodsMap.get(methodSlug)
-          if (methodEntry) {
-            methodEntry.revenue += order.total || 0
-            methodEntry.orderCount += 1
-          } else {
-            existing.paymentMethodsMap.set(methodSlug, {
-              name: methodName,
-              slug: methodSlug,
-              revenue: order.total || 0,
-              orderCount: 1,
-            })
-          }
-        }
-      } else {
-        const paymentMethodsMap = new Map<
-          string,
-          { name: string; slug: string; revenue: number; orderCount: number }
-        >()
-        
-        if (methodSlug) {
-          paymentMethodsMap.set(methodSlug, {
-            name: methodName,
-            slug: methodSlug,
-            revenue: order.total || 0,
-            orderCount: 1,
-          })
-        }
-        
-        revenueByProvider.set(providerSlug, {
-          providerName,
-          providerSlug,
-          revenue: order.total || 0,
+      // 6. Shape final output to match previous API response exactly
+      {
+        $project: {
+          _id: 0,
+          providerName: {
+            $ifNull: [{ $arrayElemAt: ['$providerData.name', 0] }, 'Direct Orders'],
+          },
+          providerSlug: {
+            $ifNull: [{ $arrayElemAt: ['$providerData.slug', 0] }, 'direct'],
+          },
+          revenue: 1,
           orderCount: 1,
-          paymentMethodsMap,
-        })
-      }
-    }
+          // Capitalise first letter of each payment method slug → name
+          paymentMethods: {
+            $map: {
+              input: '$paymentMethods',
+              as: 'pm',
+              in: {
+                slug: '$$pm.slug',
+                name: {
+                  $concat: [
+                    { $toUpper: { $substrCP: ['$$pm.slug', 0, 1] } },
+                    { $substrCP: ['$$pm.slug', 1, { $strLenCP: '$$pm.slug' }] },
+                  ],
+                },
+                revenue: '$$pm.revenue',
+                orderCount: '$$pm.orderCount',
+              },
+            },
+          },
+        },
+      },
 
-    // Convert to array and sort by revenue (descending)
-    const providers = Array.from(revenueByProvider.values())
-      .map((p) => ({
-        providerName: p.providerName,
-        providerSlug: p.providerSlug,
-        revenue: p.revenue,
-        orderCount: p.orderCount,
-        paymentMethods: Array.from(p.paymentMethodsMap.values()).sort((a, b) => b.revenue - a.revenue),
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
+      // 7. Sort paymentMethods by revenue desc inside each provider
+      {
+        $addFields: {
+          paymentMethods: {
+            $sortArray: { input: '$paymentMethods', sortBy: { revenue: -1 } },
+          },
+        },
+      },
+
+      // 8. Sort providers by revenue desc
+      { $sort: { revenue: -1 } },
+    ]
+
+    const providers = await ordersCollection.aggregate(pipeline).toArray()
 
     return NextResponse.json(providers)
   } catch (error) {

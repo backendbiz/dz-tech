@@ -1,4 +1,4 @@
-import { getPayloadClient } from '@/lib/payload'
+import { getDb } from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
 
 interface Provider {
@@ -12,22 +12,29 @@ interface Provider {
 
 export async function GET() {
   try {
-    const payload = await getPayloadClient()
-    const result = await payload.find({
-      collection: 'providers',
-      sort: '-createdAt',
-      limit: 50,
-      overrideAccess: true,
-    })
+    const db = await getDb()
 
-    const providers: Provider[] = result.docs.map((doc) => ({
-      id: doc.id,
-      name: doc.name,
-      slug: doc.slug,
-      status: doc.status,
-      lastUsedAt: doc.lastUsedAt,
-      createdAt: doc.createdAt,
-    }))
+    const providers: Provider[] = await db
+      .collection('providers')
+      .find({})
+      .sort({ createdAt: -1 })
+      .project({
+        _id: 1,
+        name: 1,
+        slug: 1,
+        status: 1,
+        lastUsedAt: 1,
+        createdAt: 1,
+      })
+      .map((doc) => ({
+        id: doc._id.toString(),
+        name: doc.name,
+        slug: doc.slug,
+        status: doc.status,
+        lastUsedAt: doc.lastUsedAt ?? null,
+        createdAt: doc.createdAt,
+      }))
+      .toArray()
 
     return NextResponse.json(providers)
   } catch (error) {

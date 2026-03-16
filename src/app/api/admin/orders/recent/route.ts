@@ -1,7 +1,5 @@
-import { getPayloadClient } from '@/lib/payload'
+import { getDb } from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
-import type { Order, Service, Provider } from '@/payload-types'
-import type { Where } from 'payload'
 
 export interface RecentOrderResponse {
   id: string
@@ -22,7 +20,7 @@ export interface RecentOrderResponse {
   date: string
 }
 
-function mapOrderStatus(status: Order['status']): RecentOrderResponse['status'] {
+function mapOrderStatus(status: string): RecentOrderResponse['status'] {
   switch (status) {
     case 'paid':
       return 'Completed'
@@ -45,66 +43,91 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    console.log('[Admin Recent Orders API] Starting request...', { from, to })
-    const payload = await getPayloadClient()
-    console.log('[Admin Recent Orders API] Payload client initialized')
+    const db = await getDb()
 
-    // Build date filter if provided
-    let dateFilter: Where | undefined
+    // Build $match stage
+    const match: Record<string, unknown> = {}
+
     if (from || to) {
-      const createdAtFilter: Record<string, string> = {}
-      if (from) {
-        createdAtFilter.greater_than_equal = new Date(from).toISOString()
-      }
+      const dateFilter: Record<string, Date> = {}
+      if (from) dateFilter.$gte = new Date(from)
       if (to) {
         const toDate = new Date(to)
         toDate.setHours(23, 59, 59, 999)
-        createdAtFilter.less_than_equal = toDate.toISOString()
+        dateFilter.$lte = toDate
       }
-      dateFilter = { createdAt: createdAtFilter }
+      match.createdAt = dateFilter
     }
 
-    // Get recent orders, sorted by createdAt descending
-    console.log('[Admin Recent Orders API] Fetching orders from database...')
-    const ordersResult = await payload.find({
-      collection: 'orders',
-      sort: '-createdAt',
-      limit: 10,
-      depth: 1, // Populate service and provider relationships
-      where: dateFilter,
-      overrideAccess: true,
-    })
-    console.log(`[Admin Recent Orders API] Found ${ordersResult.docs.length} orders`)
+    const pipeline = [
+      // 1. Filter by date if provided
+      { $match: match },
 
-    const orders: RecentOrderResponse[] = ordersResult.docs.map((order) => {
-      const service = order.service as Service | undefined
-      const provider = order.provider as Provider | undefined
+      // 2. Sort newest first
+      { $sort: { createdAt: -1 } },
 
-      // Get customer name from provider if available, otherwise use email or generic
-      const customerName = provider?.name || order.customerEmail || 'Unknown Customer'
+      // 3. Limit to 10
+      { $limit: 10 },
+
+      // 4. Lookup service title
+      {
+        $lookup: {
+          from: 'services',
+          localField: 'service',
+          foreignField: '_id',
+          as: 'serviceData',
+        },
+      },
+
+      // 5. Lookup provider name + slug
+      {
+        $lookup: {
+          from: 'providers',
+          localField: 'provider',
+          foreignField: '_id',
+          as: 'providerData',
+        },
+      },
+
+      // 6. Project only what we need
+      {
+        $project: {
+          _id: 1,
+          orderId: 1,
+          customerEmail: 1,
+          total: 1,
+          status: 1,
+          createdAt: 1,
+          providerName: { $arrayElemAt: ['$providerData.name', 0] },
+          providerSlug: { $arrayElemAt: ['$providerData.slug', 0] },
+          serviceTitle: { $arrayElemAt: ['$serviceData.title', 0] },
+        },
+      },
+    ]
+
+    const docs = await db.collection('orders').aggregate(pipeline).toArray()
+
+    const orders: RecentOrderResponse[] = docs.map((doc) => {
+      const customerName = doc.providerName || doc.customerEmail || 'Unknown Customer'
       const customerEmail =
-        order.customerEmail || (provider ? `${provider.slug}@provider.com` : 'N/A')
-
-      // Get product name from service
-      const productName = service?.title || 'Unknown Service'
+        doc.customerEmail || (doc.providerSlug ? `${doc.providerSlug}@provider.com` : 'N/A')
+      const productName = doc.serviceTitle || 'Unknown Service'
 
       return {
-        id: order.orderId || order.id,
-        orderId: order.orderId,
+        id: doc.orderId || doc._id.toString(),
+        orderId: doc.orderId ?? null,
         customer: customerName,
         email: customerEmail,
         product: productName,
-        amount: `$${(order.total || 0).toFixed(2)}`,
-        status: mapOrderStatus(order.status),
-        date: new Date(order.createdAt).toLocaleDateString('en-US', {
+        amount: `$${(doc.total || 0).toFixed(2)}`,
+        status: mapOrderStatus(doc.status),
+        date: new Date(doc.createdAt).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
         }),
       }
     })
-
-    console.log('[Admin Recent Orders API] Returning orders:', orders.length)
 
     return NextResponse.json(orders)
   } catch (error) {

@@ -1,6 +1,5 @@
-import { getPayloadClient } from '@/lib/payload'
+import { getDb } from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
-import type { Where } from 'payload'
 
 export interface OrderStats {
   totalOrders: number
@@ -16,80 +15,85 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    console.log('[Admin Stats API] Starting request...', { from, to })
-    const payload = await getPayloadClient()
-    console.log('[Admin Stats API] Payload client initialized')
+    const db = await getDb()
 
-    // Build date filter if provided
-    let dateFilter: Where | undefined
+    // Build $match stage
+    const match: Record<string, unknown> = {}
+
     if (from || to) {
-      const createdAtFilter: Record<string, string> = {}
-      if (from) {
-        createdAtFilter.greater_than_equal = new Date(from).toISOString()
-      }
+      const dateFilter: Record<string, Date> = {}
+      if (from) dateFilter.$gte = new Date(from)
       if (to) {
         const toDate = new Date(to)
         toDate.setHours(23, 59, 59, 999)
-        createdAtFilter.less_than_equal = toDate.toISOString()
+        dateFilter.$lte = toDate
       }
-      dateFilter = { createdAt: createdAtFilter }
+      match.createdAt = dateFilter
     }
 
-    // Get total orders count (filtered by date if provided)
-    console.log('[Admin Stats API] Fetching total orders count...')
-    const totalOrdersResult = await payload.count({
-      collection: 'orders',
-      where: dateFilter,
-      overrideAccess: true,
-    })
-    console.log('[Admin Stats API] Total orders:', totalOrdersResult.totalDocs)
-
-    // Get pending orders count
-    const pendingOrdersResult = await payload.count({
-      collection: 'orders',
-      where: dateFilter
-        ? { and: [dateFilter, { status: { equals: 'pending' } }] }
-        : { status: { equals: 'pending' } },
-      overrideAccess: true,
-    })
-
-    // Get failed orders count
-    const failedOrdersResult = await payload.count({
-      collection: 'orders',
-      where: dateFilter
-        ? { and: [dateFilter, { status: { equals: 'failed' } }] }
-        : { status: { equals: 'failed' } },
-      overrideAccess: true,
-    })
-
-    // Get paid/successful orders count
-    const paidOrdersResult = await payload.count({
-      collection: 'orders',
-      where: dateFilter
-        ? { and: [dateFilter, { status: { equals: 'paid' } }] }
-        : { status: { equals: 'paid' } },
-      overrideAccess: true,
-    })
-
-    // Get orders from the last 30 days for recent orders (or within date range)
+    // Threshold for recentOrdersCount — last 30 days, or the date range itself if provided
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const recentThreshold = from ? new Date(from) : thirtyDaysAgo
 
-    const recentOrdersResult = await payload.count({
-      collection: 'orders',
-      where: dateFilter || { createdAt: { greater_than: thirtyDaysAgo.toISOString() } },
-      overrideAccess: true,
-    })
+    const pipeline = [
+      // 1. Apply date filter
+      { $match: match },
 
-    const stats: OrderStats = {
-      totalOrders: totalOrdersResult.totalDocs || 0,
-      pendingOrders: pendingOrdersResult.totalDocs || 0,
-      failedOrders: failedOrdersResult.totalDocs || 0,
-      recentOrdersCount: recentOrdersResult.totalDocs || 0,
-      paidOrders: paidOrdersResult.totalDocs || 0,
-    }
+      // 2. Group all matched orders — compute every stat in one pass
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          pendingOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+          },
+          failedOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] },
+          },
+          paidOrders: {
+            $sum: { $cond: [{ $eq: ['$status', 'paid'] }, 1, 0] },
+          },
+          recentOrdersCount: {
+            $sum: {
+              $cond: [{ $gte: ['$createdAt', recentThreshold] }, 1, 0],
+            },
+          },
+        },
+      },
 
-    console.log('[Admin Stats API] Returning stats:', stats)
+      // 3. Clean up the _id: null
+      {
+        $project: {
+          _id: 0,
+          totalOrders: 1,
+          pendingOrders: 1,
+          failedOrders: 1,
+          paidOrders: 1,
+          recentOrdersCount: 1,
+        },
+      },
+    ]
+
+    const results = await db.collection('orders').aggregate(pipeline).toArray()
+
+    // If no orders match, aggregate returns empty array — fallback to zeros
+    const stats: OrderStats =
+      results.length > 0
+        ? {
+            totalOrders: results[0].totalOrders ?? 0,
+            pendingOrders: results[0].pendingOrders ?? 0,
+            failedOrders: results[0].failedOrders ?? 0,
+            recentOrdersCount: results[0].recentOrdersCount ?? 0,
+            paidOrders: results[0].paidOrders ?? 0,
+          }
+        : {
+            totalOrders: 0,
+            pendingOrders: 0,
+            failedOrders: 0,
+            recentOrdersCount: 0,
+            paidOrders: 0,
+          }
 
     return NextResponse.json(stats)
   } catch (error) {
