@@ -108,7 +108,7 @@ export function ProviderRevenueChart() {
     <div className="adm-panel">
       <div className="adm-panel-header">
         <div>
-          <h2 className="adm-panel-title">Revenue by Provider</h2>
+          <h2 className="adm-panel-title">All Time Revenue by Provider</h2>
           <p className="adm-panel-sub">
             Total: ${totalRevenue.toLocaleString()} · {totalOrders} paid orders
           </p>
