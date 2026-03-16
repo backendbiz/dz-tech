@@ -110,7 +110,7 @@ export function ProviderRevenueChart() {
         <div>
           <h2 className="adm-panel-title">Revenue by Provider</h2>
           <p className="adm-panel-sub">
-            Total: ${totalRevenue.toLocaleString()} · {totalOrders} orders
+            Total: ${totalRevenue.toLocaleString()} · {totalOrders} paid orders
           </p>
         </div>
       </div>
@@ -145,17 +145,26 @@ export function ProviderRevenueChart() {
                 if (active && payload && payload.length > 0) {
                   // The base provider object is accessible through payload[0].payload
                   const orderCount = payload[0].payload.orderCount || 0
-                  
+
                   return (
                     <div className="adm-tooltip adm:bg-(--adm-surface) adm:border adm:border-(--adm-border) adm:rounded-lg adm:px-3 adm:py-2 adm:text-xs adm:shadow-lg adm:min-w-[150px]">
                       <p className="adm-tooltip-label adm:font-medium adm:mb-2">{label}</p>
-                      <p style={{ color: 'var(--adm-muted)', fontSize: '0.875rem', marginBottom: '8px' }}>
+                      <p
+                        style={{
+                          color: 'var(--adm-muted)',
+                          fontSize: '0.875rem',
+                          marginBottom: '8px',
+                        }}
+                      >
                         {orderCount} orders
                       </p>
-                      
+
                       <div className="adm:flex adm:flex-col adm:gap-1.5">
                         {payload.map((entry, index) => (
-                          <div key={index} className="adm:flex adm:items-center adm:justify-between adm:gap-4">
+                          <div
+                            key={index}
+                            className="adm:flex adm:items-center adm:justify-between adm:gap-4"
+                          >
                             <div className="adm:flex adm:items-center adm:gap-1.5">
                               <div
                                 className="adm:w-2 adm:h-2 adm:rounded-full"
@@ -169,12 +178,15 @@ export function ProviderRevenueChart() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {payload.length > 1 && (
                         <div className="adm:mt-2 adm:pt-2 adm:border-t adm:border-(--adm-border) adm:flex adm:items-center adm:justify-between adm:font-medium">
                           <span className="adm:text-(--adm-text)">Total</span>
                           <span className="adm:text-(--adm-green) adm:font-mono">
-                            ${payload.reduce((sum, entry) => sum + Number(entry.value), 0).toFixed(2)}
+                            $
+                            {payload
+                              .reduce((sum, entry) => sum + Number(entry.value), 0)
+                              .toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -185,11 +197,9 @@ export function ProviderRevenueChart() {
               }}
               cursor={{ fill: 'var(--adm-overlay-xs)' }}
             />
-            <Legend 
-              wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} 
-            />
+            <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
             {paymentMethodNames.map((name, index) => (
-              <Bar 
+              <Bar
                 key={name}
                 dataKey={name}
                 stackId="a"
