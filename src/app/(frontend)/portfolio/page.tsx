@@ -5,7 +5,7 @@ import { ProjectCard } from '@/components/sections/projects/ProjectCard'
 import { Hero } from '@/components/sections'
 
 export const metadata: Metadata = {
-  title: 'Our Projects | Apex Consulting',
+  title: 'Our Projects | DZ Tech',
   description: 'Explore our portfolio of successful projects and case studies.',
 }
 

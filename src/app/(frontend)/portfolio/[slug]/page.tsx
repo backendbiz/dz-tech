@@ -27,12 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!project) {
     return {
-      title: 'Project Not Found | Apex Consulting',
+      title: 'Project Not Found | DZ Tech',
     }
   }
 
   return {
-    title: `${project.title} | Apex Consulting`,
+    title: `${project.title} | DZ Tech`,
     description: `Read our case study for ${project.title}.`,
   }
 }

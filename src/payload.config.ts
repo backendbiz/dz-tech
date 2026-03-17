@@ -191,7 +191,7 @@ export default buildConfig({
   ],
   email: resendAdapter({
     defaultFromAddress: 'onboarding@resend.dev',
-    defaultFromName: 'Apex Consulting',
+    defaultFromName: 'DZ Tech',
     apiKey: process.env.RESEND_API_KEY || '',
   }),
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || '',

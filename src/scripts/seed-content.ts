@@ -207,7 +207,7 @@ export const seed = async (payload: Payload) => {
             blockType: 'about-block',
             heading: 'Our Story',
             description:
-              'Founded in 2010, Apex Consulting has grown from a small team of passionate visionaries to a global firm trusting by Fortune 500 companies.',
+              'Founded in 2010, DZ Tech has grown from a small team of passionate visionaries to a global firm trusting by Fortune 500 companies.',
             features: [
               { text: 'Global Reach' },
               { text: 'Industry Expertise' },
@@ -322,7 +322,7 @@ export const seed = async (payload: Payload) => {
             sectionLabel: 'Visit Us',
             heading: 'Our Headquarters',
             description: '123 Business Ave, Suite 100\nNew York, NY 10001',
-            features: [{ text: 'Email: info@apex.com' }, { text: 'Phone: +1 (555) 123-4567' }],
+            features: [{ text: 'Email: info@dztech.com' }, { text: 'Phone: +1 (555) 123-4567' }],
           },
         ],
       },
@@ -352,7 +352,7 @@ export const seed = async (payload: Payload) => {
                     children: [
                       {
                         type: 'text',
-                        text: 'Welcome to Apex Consulting. These terms and conditions outline the rules and regulations for the use of our Website.',
+                        text: 'Welcome to DZ Tech. These terms and conditions outline the rules and regulations for the use of our Website.',
                         version: 1,
                       },
                     ],
@@ -363,7 +363,7 @@ export const seed = async (payload: Payload) => {
                     children: [
                       {
                         type: 'text',
-                        text: 'By accessing this website we assume you accept these terms and conditions. Do not continue to use Apex Consulting if you do not agree to take all of the terms and conditions stated on this page.',
+                        text: 'By accessing this website we assume you accept these terms and conditions. Do not continue to use DZ Tech if you do not agree to take all of the terms and conditions stated on this page.',
                         version: 1,
                       },
                     ],

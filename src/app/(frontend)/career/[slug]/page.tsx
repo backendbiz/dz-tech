@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!job) {
     return {
-      title: 'Job Not Found | Apex Consulting',
+      title: 'Job Not Found | DZ Tech',
     }
   }
 
   return {
-    title: `${job.title} | Careers at Apex Consulting`,
+    title: `${job.title} | Careers at DZ Tech`,
     description: `Join us as a ${job.title}. Location: ${job.location}.`,
   }
 }

@@ -20,8 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: page?.seo?.metaTitle || page?.title || 'Career',
     description:
-      page?.seo?.metaDescription ||
-      'Join our team at Apex Consulting. Explore career opportunities.',
+      page?.seo?.metaDescription || 'Join our team at DZ Tech. Explore career opportunities.',
   }
 }
 
