@@ -1,11 +1,13 @@
 import type { GlobalConfig } from 'payload'
 import { revalidateGlobal } from '@/hooks/revalidate'
+import { authenticated } from '@/access'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Site Settings',
   access: {
     read: () => true,
+    update: authenticated,
   },
   hooks: {
     afterChange: [revalidateGlobal],
