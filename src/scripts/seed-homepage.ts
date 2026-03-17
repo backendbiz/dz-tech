@@ -86,7 +86,7 @@ function getHomePageData(): any {
         sectionLabel: 'Why Choose Us',
         heading: 'Partnering for Excellence',
         description:
-          'At Apex Consulting, we believe that true success comes from a deep understanding of your unique challenges. Our diverse team of experts brings decades of experience across industries to deliver tailored solutions that drive real results.',
+          'At DZ Tech, we believe that true success comes from a deep understanding of your unique challenges. Our diverse team of experts brings decades of experience across industries to deliver tailored solutions that drive real results.',
         features: [
           { text: 'Data-driven decision making' },
           { text: 'Holistic business strategy' },
@@ -141,9 +141,9 @@ function getHomePageData(): any {
       },
     ],
     seo: {
-      metaTitle: 'Apex Consulting | Strategic Business Solutions',
+      metaTitle: 'DZ Tech | Strategic Business Solutions',
       metaDescription:
-        'Apex Consulting provides expert strategic guidance, operational improvements, and financial advisory services to global enterprises.',
+        'DZ Tech provides expert strategic guidance, operational improvements, and financial advisory services to global enterprises.',
     },
   }
 }
