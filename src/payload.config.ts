@@ -138,8 +138,8 @@ export default buildConfig({
   globals: [SiteSettings, Navigation, Footer],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
-  cors: [process.env.NEXT_PUBLIC_SERVER_URL || '', 'http://localhost:3000', '*'].filter(Boolean),
-  csrf: [process.env.NEXT_PUBLIC_SERVER_URL || '', 'http://localhost:3000', '*'].filter(Boolean),
+  cors: [process.env.NEXT_PUBLIC_SERVER_URL || '', 'http://localhost:3000'].filter(Boolean),
+  csrf: [process.env.NEXT_PUBLIC_SERVER_URL || '', 'http://localhost:3000'].filter(Boolean),
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
