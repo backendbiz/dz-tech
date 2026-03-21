@@ -60,62 +60,6 @@ export default buildConfig({
           Component: '@/components/Admin/ReportsView#ReportsView',
           path: '/reports',
         },
-        analytics: {
-          Component: '@/components/Admin/AnalyticsView#AnalyticsView',
-          path: '/analytics',
-        },
-        chats: {
-          Component: '@/components/Admin/ChatsView#ChatsView',
-          path: '/chats',
-        },
-        settings: {
-          Component: '@/components/Admin/SettingsView#SettingsView',
-          path: '/settings',
-        },
-        'audit-logs': {
-          Component: '@/components/Admin/AuditLogView#AuditLogView',
-          path: '/audit-logs',
-        },
-        'support-tickets': {
-          Component: '@/components/Admin/SupportTicketsView#SupportTicketsView',
-          path: '/support-tickets',
-        },
-        integrations: {
-          Component: '@/components/Admin/IntegrationsView#IntegrationsView',
-          path: '/integrations',
-        },
-        kanban: {
-          Component: '@/components/Admin/KanbanView#KanbanView',
-          path: '/kanban',
-        },
-        calendar: {
-          Component: '@/components/Admin/CalendarView#CalendarView',
-          path: '/calendar',
-        },
-        'api-dashboard': {
-          Component: '@/components/Admin/ApiDashboardView#ApiDashboardView',
-          path: '/api-dashboard',
-        },
-        'file-manager': {
-          Component: '@/components/Admin/FileManagerView#FileManagerView',
-          path: '/file-manager',
-        },
-        billing: {
-          Component: '@/components/Admin/BillingView#BillingView',
-          path: '/billing',
-        },
-        team: {
-          Component: '@/components/Admin/TeamView#TeamView',
-          path: '/team',
-        },
-        'knowledge-base': {
-          Component: '@/components/Admin/KnowledgeBaseView#KnowledgeBaseView',
-          path: '/knowledge-base',
-        },
-        wallets: {
-          Component: '@/components/Admin/WalletsView#WalletsView',
-          path: '/wallets',
-        },
       },
     },
     avatar: {
